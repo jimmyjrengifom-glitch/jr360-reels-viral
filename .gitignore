@@ -1,2 +1,8 @@
 codex_run*.log
 CODEX_LOG_BACKEND.md
+REVIEW_BRIEF.md
+REVIEW_CODEX.md
+codex_review.log
+FIX_BRIEF.md
+CODEX_FIX.md
+codex_fix.log

@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -20,13 +21,85 @@ from pydantic import BaseModel
 
 
 MAX_BYTES = 150 * 1024 * 1024
-DOWNLOAD_TIMEOUT_SECONDS = 240
+DOWNLOAD_TIMEOUT_SECONDS = 90
 DOWNLOAD_ROOT = Path("/tmp/reels")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
 # Allowlist también evita SSRF: solo se descargan links de estas redes.
 ALLOWED_DOMAINS = ("instagram.com", "tiktok.com", "youtube.com", "youtu.be", "facebook.com", "fb.watch")
 
 app = FastAPI(title="JR360 Reel Downloader", docs_url=None, redoc_url=None)
+
+
+# ponytail: almacén en memoria; se pierde al redeploy. Usar Redis si hace falta persistir.
+JOBS: dict[str, dict] = {}
+JOBS_LOCK = threading.Lock()
+MAX_JOBS = 2000
+
+
+class JobPayload(BaseModel):
+    model_config = {"extra": "allow"}
+
+
+def _require_internal_token(token: str | None) -> None:
+    if not INTERNAL_TOKEN or token != INTERNAL_TOKEN:
+        raise HTTPException(status_code=401, detail={"code": "unauthorized"})
+
+
+def _is_expired(job: dict, now: datetime) -> bool:
+    try:
+        expires_at = datetime.fromisoformat(str(job["expires_at"]).replace("Z", "+00:00"))
+        return expires_at <= now
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+def _purge_jobs(now: datetime) -> None:
+    for key in [key for key, value in JOBS.items() if _is_expired(value, now)]:
+        JOBS.pop(key, None)
+
+
+@app.put("/v1/jobs/{job_id}")
+def put_job(
+    job_id: str,
+    payload: JobPayload,
+    x_internal_token: Annotated[str | None, Header()] = None,
+) -> dict:
+    _require_internal_token(x_internal_token)
+    incoming = payload.model_dump(exclude_none=False)
+    now = datetime.now(timezone.utc)
+    with JOBS_LOCK:
+        _purge_jobs(now)
+        current = JOBS.get(job_id, {})
+        JOBS[job_id] = {
+            **current,
+            **incoming,
+            "job_id": job_id,
+            "_created_at": current.get("_created_at", time.time()),
+        }
+        if len(JOBS) > MAX_JOBS:
+            oldest = sorted(JOBS, key=lambda key: JOBS[key].get("_created_at", 0))
+            for key in oldest[:len(JOBS) - MAX_JOBS]:
+                JOBS.pop(key, None)
+        return {key: value for key, value in JOBS[job_id].items() if key != "_created_at"}
+
+
+@app.get("/v1/jobs/{job_id}")
+def get_job(
+    job_id: str,
+    x_internal_token: Annotated[str | None, Header()] = None,
+) -> dict:
+    _require_internal_token(x_internal_token)
+    now = datetime.now(timezone.utc)
+    with JOBS_LOCK:
+        requested = JOBS.get(job_id)
+        requested_expired = requested is not None and _is_expired(requested, now)
+        _purge_jobs(now)
+        if requested_expired:
+            raise HTTPException(status_code=404, detail={"code": "job_expired"})
+        job = JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail={"code": "job_not_found"})
+        return {key: value for key, value in job.items() if key != "_created_at"}
 
 
 class DownloadRequest(BaseModel):
@@ -109,8 +182,7 @@ async def download(
     background_tasks: BackgroundTasks,
     x_internal_token: Annotated[str | None, Header()] = None,
 ):
-    if not INTERNAL_TOKEN or x_internal_token != INTERNAL_TOKEN:
-        raise HTTPException(status_code=401, detail={"code": "unauthorized"})
+    _require_internal_token(x_internal_token)
 
     parsed = urlparse(payload.url)
     host = (parsed.hostname or "").lower()
@@ -154,7 +226,7 @@ async def download(
 # así que todo el manejo de bytes vive aquí y n8n solo recibe la referencia del archivo.
 
 GEMINI = "https://generativelanguage.googleapis.com/"
-MAX_UPLOAD_BYTES = 60 * 1024 * 1024  # ponytail: el video subido viaja en base64 por n8n; subir el tope exige subida directa del navegador
+MAX_UPLOAD_BYTES = 40 * 1024 * 1024  # ponytail: el video subido viaja en base64 por n8n; subir el tope exige subida directa del navegador
 
 
 class PrepareRequest(BaseModel):
@@ -191,32 +263,42 @@ def _gemini_upload(video: Path, key: str, display_name: str) -> dict:
                  "X-Goog-Upload-Header-Content-Type": "video/mp4",
                  "Content-Type": "application/json"},
     )
-    with _gemini_call(start, 60) as r:
+    with _gemini_call(start, 15) as r:
         upload_url = r.headers["X-Goog-Upload-URL"]
-    upload = urllib.request.Request(
-        upload_url, method="POST", data=video.read_bytes(),
-        headers={"X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize",
-                 "Content-Length": str(size)},
-    )
-    with _gemini_call(upload, 300) as r:
-        file = json.load(r)["file"]
-    for _ in range(90):
+    with video.open("rb") as stream:
+        upload = urllib.request.Request(
+            upload_url, method="POST", data=stream,
+            headers={"X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize",
+                     "Content-Length": str(size)},
+        )
+        with _gemini_call(upload, 60) as r:
+            file = json.load(r)["file"]
+    deadline = time.monotonic() + 80  # videos de 2 min tardan en procesarse
+    while time.monotonic() < deadline:
         if file.get("state") == "ACTIVE":
             return file
         if file.get("state") == "FAILED":
             raise GeminiError(502, "file_failed: " + json.dumps(file.get("error", {}))[:200])
         time.sleep(2)
-        with _gemini_call(urllib.request.Request(f"{GEMINI}v1beta/{file['name']}?key={key}"), 30) as r:
+        with _gemini_call(urllib.request.Request(f"{GEMINI}v1beta/{file['name']}?key={key}"), 10) as r:
             file = json.load(r)
     raise GeminiError(504, "file_processing_timeout")
 
 
 def _save_upload(video_b64: str, directory: Path) -> Path:
-    raw = base64.b64decode(video_b64, validate=True)
-    if len(raw) > MAX_UPLOAD_BYTES:
+    estimated_size = len(video_b64.rstrip("=")) * 3 // 4
+    if estimated_size > MAX_UPLOAD_BYTES:
         raise OverflowError("upload exceeds size limit")
     src = directory / "upload.bin"
-    src.write_bytes(raw)
+    written = 0
+    chunk_chars = 1024 * 1024
+    with src.open("wb") as output:
+        for offset in range(0, len(video_b64), chunk_chars):
+            raw = base64.b64decode(video_b64[offset:offset + chunk_chars], validate=True)
+            written += len(raw)
+            if written > MAX_UPLOAD_BYTES:
+                raise OverflowError("upload exceeds size limit")
+            output.write(raw)
     return _ensure_h264(src, force=True)  # .mov/HEVC de celular -> MP4 H.264 real
 
 
@@ -226,8 +308,7 @@ async def prepare(
     x_internal_token: Annotated[str | None, Header()] = None,
     x_gemini_key: Annotated[str | None, Header()] = None,
 ):
-    if not INTERNAL_TOKEN or x_internal_token != INTERNAL_TOKEN:
-        raise HTTPException(status_code=401, detail={"code": "unauthorized"})
+    _require_internal_token(x_internal_token)
     if not x_gemini_key:
         raise HTTPException(status_code=400, detail={"code": "missing_gemini_key"})
     if bool(payload.url) == bool(payload.video_b64):

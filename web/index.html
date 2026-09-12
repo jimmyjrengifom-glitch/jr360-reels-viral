@@ -118,14 +118,14 @@
     <div class="o-separador">o si el link no funciona</div>
 
     <label class="subir" id="etiqueta-subida" for="archivo-video">
-      📹 Toca aquí para subir el video (hasta 60 MB)
+      📹 Toca aquí para subir el video (hasta 40 MB)
       <input type="file" id="archivo-video" accept="video/mp4,video/quicktime,video/webm">
     </label>
 
     <div class="o-separador">opcional, para un análisis más profundo</div>
     <label class="subir" id="etiqueta-captura" for="archivo-captura">
       📊 Sube la foto de "Estadísticas" del Reel
-      <input type="file" id="archivo-captura" accept="image/*">
+      <input type="file" id="archivo-captura" accept="image/jpeg,image/png,image/webp">
     </label>
 
     <label for="tema" style="margin-top:20px">¿De qué trata tu cuenta? (opcional)</label>
@@ -227,27 +227,42 @@ elegirBoton("grupo-formato","format");
 elegirBoton("grupo-escenario","setting");
 elegirBoton("grupo-versiones","versions");
 
+const TEXTO_ESTADO = {
+  queued: "Preparando el análisis…",
+  downloading: "Descargando el video…",
+  processing: "Preparando el video…",
+  analyzing: "Analizando la estructura del video…",
+};
+
 async function esperarJob(pollUrl){
-  const limite = Date.now() + 6 * 60 * 1000;
-  while(true){
-    const r = await fetch(API_BASE + pollUrl);
-    const data = await r.json();
-    // n8n guarda el estado del análisis recién al terminar: mientras trabaja, la consulta dice "no encontrado".
-    if(data.error?.code === "JOB_NOT_FOUND" && Date.now() < limite){
-      await new Promise(res => setTimeout(res, 5000));
+  const limite = Date.now() + 9 * 60 * 1000;   // peor caso del backend: ~8 min
+  const pausa = (ms) => new Promise(res => setTimeout(res, ms));
+  while(Date.now() < limite){
+    let data;
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch(API_BASE + pollUrl, { signal: ctrl.signal });
+      clearTimeout(t);
+      data = await r.json();
+    } catch {
+      await pausa(5000);            // red intermitente: se reintenta hasta el límite
       continue;
     }
-    if(data.status === "completed") return data;
+    // Recién creado, el job puede tardar unos segundos en aparecer: no es error.
+    if(data.error?.code === "JOB_NOT_FOUND"){ await pausa(5000); continue; }
+    if(data.status === "completed" || data.status === "needs_upload") return data;
     if(data.status === "failed" || data.ok === false) throw new Error(mensajeError(data));
-    if(data.status === "needs_upload") return data;
-    await new Promise(res => setTimeout(res, (data.retry_after_seconds || 3) * 1000));
+    if(TEXTO_ESTADO[data.status]) el("texto-carga").textContent = TEXTO_ESTADO[data.status];
+    await pausa((data.retry_after_seconds || 3) * 1000);
   }
+  throw new Error("El análisis está tardando más de lo normal. Intenta de nuevo en unos minutos.");
 }
 
 function mensajeError(data){
   const codigo = data.error?.code || data.error_code || "";
   const mapa = {
-    TOO_LARGE: "El video pesa demasiado. Prueba con uno de menos de 60 MB.",
+    TOO_LARGE: "El video pesa demasiado. Prueba con uno de menos de 40 MB.",
     TOO_LONG: "El video dura más de 3 minutos. Usa uno más corto.",
     QUOTA_EXHAUSTED: "Llegamos al límite de análisis de hoy. Intenta mañana.",
     INVALID_MEDIA: "No pudimos leer ese archivo. Prueba con otro video.",
