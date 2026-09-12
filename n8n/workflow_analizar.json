@@ -1,0 +1,106 @@
+{
+  "name": "JR360 - Analizar Reel v1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/analizar",
+        "responseMode": "responseNode",
+        "options": { "binaryPropertyName": "video", "rawBody": true }
+      },
+      "id": "analizar-webhook",
+      "name": "POST GET /analizar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-900, -100],
+      "webhookId": "REPLACE_ANALIZAR_POST_WEBHOOK_ID"
+    },
+    {
+      "parameters": { "httpMethod": "GET", "path": "v1/analizar", "responseMode": "responseNode", "options": {} },
+      "id": "analizar-get-webhook",
+      "name": "GET /analizar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-680, 300],
+      "webhookId": "REPLACE_ANALIZAR_GET_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const q=$json.query||{}; const id=q.job_id; const request_id='req_'+crypto.randomUUID().replaceAll('-','').slice(0,22); const store=$getWorkflowStaticData('global'); store.jobs=store.jobs||{}; const job=store.jobs[id]; if(!id) return [{json:{statusCode:400,body:{ok:false,error:{code:'INVALID_JOB_ID',message:'Falta job_id.',retryable:false},request_id}}}]; if(!job) return [{json:{statusCode:404,body:{ok:false,error:{code:'JOB_NOT_FOUND',message:'No encontramos ese análisis.',retryable:false},request_id}}}]; if(new Date(job.expires_at)<new Date()) return [{json:{statusCode:410,body:{ok:false,error:{code:'JOB_EXPIRED',message:'El análisis expiró.',retryable:false},request_id}}}]; return [{json:{statusCode:job.status==='completed'||job.status==='needs_upload'||job.status==='failed'?200:202,body:{...job,request_id}}}];"
+      },
+      "id": "read-job",
+      "name": "Consultar job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-450, 300]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json.body }}", "options": { "responseCode": "={{ $json.statusCode }}" } },
+      "id": "poll-response",
+      "name": "Responder consulta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [-220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body=$json.body||{}; const contentType=String(($json.headers||{})['content-type']||''); const source=body.source||{}; const url=source.url||body.instagram_url; const binary=$binary||{}; const upload=binary.video; const request_id='req_'+crypto.randomUUID().replaceAll('-','').slice(0,22); const fail=(code,message,status=400)=>[{json:{invalid:true,statusCode:status,body:{ok:false,error:{code,message,retryable:false},request_id}}}]; if(url&&upload) return fail('INVALID_SOURCE','Envía una sola fuente.'); if(!url&&!upload) return fail('INVALID_SOURCE','Envía una URL de Instagram o un video.'); if(url){let u;try{u=new URL(url)}catch{return fail('INVALID_SOURCE','La URL no es válida.')} if(!(u.hostname==='instagram.com'||u.hostname.endsWith('.instagram.com'))) return fail('INVALID_SOURCE','La URL debe ser de Instagram.');} if(upload){const allowed=['video/mp4','video/quicktime','video/webm']; if(!allowed.includes(upload.mimeType)) return fail('INVALID_MEDIA','Formato no admitido.',415); if(Number(upload.fileSize||0)>150*1024*1024) return fail('TOO_LARGE','El video supera 150 MB.',413);} const job_id='an_'+crypto.randomUUID().replaceAll('-','').slice(0,22); const expires_at=new Date(Date.now()+86400000).toISOString(); const queued={ok:true,job_id,status:'queued',poll_url:'/analizar?job_id='+job_id,retry_after_seconds:3,expires_at}; const store=$getWorkflowStaticData('global'); store.jobs=store.jobs||{}; store.jobs[job_id]=queued; return [{json:{...$json,invalid:false,job_id,request_id,source_type:url?'instagram_url':'upload',source_url:url||null,accepted:{...queued,request_id}},binary}];"
+      },
+      "id": "validate-queue",
+      "name": "Validar y crear job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-450, -100]
+    },
+    {
+      "parameters": {
+        "conditions": { "conditions": [{ "leftValue": "={{ $json.invalid }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }], "combinator": "and" }
+      },
+      "id": "invalid-if",
+      "name": "Entrada inválida",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-220, -100]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json.body }}", "options": { "responseCode": "={{ $json.statusCode }}" } },
+      "id": "invalid-response",
+      "name": "Responder error entrada",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, -220]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json.accepted }}", "options": { "responseCode": 202 } },
+      "id": "accepted-response",
+      "name": "Responder 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input=$input.first(); const j=input.json; const store=$getWorkflowStaticData('global'); const job=store.jobs[j.job_id]; const set=(status,extra={})=>{store.jobs[j.job_id]={...job,status,...extra};}; const http=this.helpers.httpRequest.bind(this.helpers); const apiKey=$env.GEMINI_API_KEY; if(!apiKey) throw new Error('GEMINI_API_KEY missing'); let video; let publicMetrics={views:null,likes:null,comments:null,captured_at:new Date().toISOString()}; try { set(j.source_type==='instagram_url'?'downloading':'processing'); if(j.source_type==='instagram_url'){ let response; try{response=await http({method:'POST',url:($env.DOWNLOADER_URL||'http://reel-downloader:8080')+'/v1/download',headers:{'X-Internal-Token':$env.DOWNLOADER_TOKEN},body:{url:j.source_url,job_id:j.job_id},json:true,encoding:'arraybuffer',returnFullResponse:true,timeout:125000});}catch(e){const status=e.statusCode||e.response?.statusCode; if(status===422){set('needs_upload',{upload_reason:'No pudimos abrir ese Reel. Descárgalo y súbelo aquí.',accepted_formats:['video/mp4','video/quicktime','video/webm']}); return [{json:{job_id:j.job_id,status:'needs_upload'}}];} throw e;} video=Buffer.from(response.body); const raw=response.headers?.['x-metadata-base64']; if(raw){try{publicMetrics=JSON.parse(Buffer.from(raw,'base64').toString('utf8'));}catch{}} } else { video=await this.helpers.getBinaryDataBuffer(0,'video'); } if(video.length>150*1024*1024) throw Object.assign(new Error('TOO_LARGE'),{publicCode:'TOO_LARGE'}); set('processing'); const mime=input.binary?.video?.mimeType||'video/mp4'; const start=await http({method:'POST',url:'https://generativelanguage.googleapis.com/upload/v1beta/files?key='+apiKey,headers:{'X-Goog-Upload-Protocol':'resumable','X-Goog-Upload-Command':'start','X-Goog-Upload-Header-Content-Length':String(video.length),'X-Goog-Upload-Header-Content-Type':mime,'Content-Type':'application/json'},body:{file:{display_name:j.job_id}},json:true,returnFullResponse:true}); const uploadUrl=start.headers['x-goog-upload-url']; const uploaded=await http({method:'POST',url:uploadUrl,headers:{'X-Goog-Upload-Offset':'0','X-Goog-Upload-Command':'upload, finalize','Content-Length':String(video.length)},body:video,returnFullResponse:false,json:true,timeout:180000}); let file=uploaded.file||uploaded; for(let n=0;n<30&&file.state!=='ACTIVE';n++){if(file.state==='FAILED') throw new Error('Gemini file failed'); await new Promise(r=>setTimeout(r,2000)); file=await http({method:'GET',url:'https://generativelanguage.googleapis.com/v1beta/'+file.name+'?key='+apiKey,json:true});} if(file.state!=='ACTIVE') throw new Error('Gemini file timeout'); set('analyzing'); const prompt=`Eres analista forense de Reels. Examina video, audio y, si existe, captura de Insights. Transcribe literalmente; separa lo visible, audible y lo inferido. Segmenta toda la duración sin huecos ni solapes. Identifica gancho 0–3 s, texto, plano, cortes, voz, giro y CTA con segundos decimales. No inventes métricas ni causalidad. Usa null cuando no sea legible. Las métricas recibidas son: ${JSON.stringify(publicMetrics)}. Devuelve únicamente JSON conforme al schema. El campo model_assessment evalúa ejecución creativa; el backend calcula el semáforo final.`; const schema={type:'object',additionalProperties:false,required:['duration_seconds','language','summary','hook','structure','turn','cta','pacing','transcript','evidence_notes','insights_read','model_assessment'],properties:{duration_seconds:{type:'number'},language:{type:'string'},summary:{type:'string'},hook:{type:'object'},structure:{type:'array',items:{type:'object',required:['start','end','role','visual','shot','spoken','on_screen','edit']}},turn:{type:['object','null']},cta:{type:['object','null']},pacing:{type:'object'},transcript:{type:'array',items:{type:'object',required:['start','end','text']}},evidence_notes:{type:'array',items:{type:'string'}},insights_read:{type:'object'},model_assessment:{type:'object',required:['strengths','gaps']}}}; const generated=await http({method:'POST',url:'https://generativelanguage.googleapis.com/v1beta/models/'+($env.GEMINI_MODEL||'gemini-2.5-flash')+':generateContent?key='+apiKey,body:{contents:[{parts:[{text:prompt},{file_data:{mime_type:mime,file_uri:file.uri}}]}],generationConfig:{responseMimeType:'application/json',responseSchema:schema,temperature:0.2}},json:true,timeout:180000}); const dna=JSON.parse(generated.candidates[0].content.parts[0].text); const views=Number(publicMetrics.views)||0, likes=Number(publicMetrics.likes)||0, comments=Number(publicMetrics.comments)||0; const completion=Number(dna.insights_read?.completion_rate)||0, shares=Number(dna.insights_read?.shares)||0, saves=Number(dna.insights_read?.saves)||0; const creative=Math.min(20,(dna.hook?6:0)+(dna.summary?4:0)+(dna.pacing?4:0)+(dna.cta?3:0)+(dna.structure?.length?3:0)); const score=Math.round(Math.min(100,Math.min(25,completion*25)+Math.min(20,views?shares/views*1000:0)+Math.min(15,views?saves/views*750:0)+Math.min(10,views?(likes+comments)/views*100:0)+creative+(views?10:2))); const traffic=score>=75?'viral':score>=45?'potential':'low'; const missing=['views','likes','comments'].filter(k=>publicMetrics[k]==null); const confidence=views?(likes||comments?'medium':'low'):'low'; const result={ok:true,job_id:j.job_id,status:'completed',source:{type:j.source_type,public_metrics:publicMetrics,insights:dna.insights_read||{},missing_metrics:missing},analysis:{traffic_light:traffic,confidence,label:score>=75?'Alto potencial observado':score>=45?'Potencial observado':'Potencial bajo observado',score,criterion:'Estimación inicial con señales disponibles; no garantiza viralidad.',reasons:dna.model_assessment?.strengths||[],gaps:dna.model_assessment?.gaps||[]},dna:{schema_version:'1.0',...dna},defaults:{topic_suggestions:[],format:'face',setting:'same',language:dna.language==='en'?'en':'es',versions:3},expires_at:job.expires_at}; set('completed',result); try{await http({method:'DELETE',url:'https://generativelanguage.googleapis.com/v1beta/'+file.name+'?key='+apiKey,json:true});}catch{} return [{json:{job_id:j.job_id,status:'completed'}}]; } catch(e){const code=e.publicCode||((e.statusCode===429||e.response?.statusCode===429)?'QUOTA_EXHAUSTED':'ANALYSIS_FAILED'); set('failed',{error:{code,message:code==='QUOTA_EXHAUSTED'?'Llegamos al límite de análisis de hoy. Intenta mañana':'No pudimos completar el análisis.',retryable:code==='ANALYSIS_FAILED'}}); return [{json:{job_id:j.job_id,status:'failed'}}]; }"
+      },
+      "id": "analyze-worker",
+      "name": "Descargar subir analizar y puntuar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 0]
+    }
+  ],
+  "connections": {
+    "POST GET /analizar": { "main": [[{ "node": "Validar y crear job", "type": "main", "index": 0 }]] },
+    "GET /analizar": { "main": [[{ "node": "Consultar job", "type": "main", "index": 0 }]] },
+    "Consultar job": { "main": [[{ "node": "Responder consulta", "type": "main", "index": 0 }]] },
+    "Validar y crear job": { "main": [[{ "node": "Entrada inválida", "type": "main", "index": 0 }]] },
+    "Entrada inválida": { "main": [[{ "node": "Responder error entrada", "type": "main", "index": 0 }],[{ "node": "Responder 202", "type": "main", "index": 0 }]] },
+    "Responder 202": { "main": [[{ "node": "Descargar subir analizar y puntuar", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
+  "active": false,
+  "versionId": "REPLACE_ANALIZAR_VERSION_ID",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

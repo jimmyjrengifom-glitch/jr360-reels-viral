@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>Multiplicador de Reels — JR360</title>
+<style>
+  :root{
+    --dorado:#D4A020; --dorado-claro:#F0B83C; --verde:#4EA010;
+    --negro:#0a0a0a; --texto:#1a1a1a; --fondo:#faf8f4; --tarjeta:#ffffff;
+    --borde:#e7e0d3; --gris:#5a5648; --rojo:#c0392b; --amarillo:#c98a10;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--fondo); color:var(--texto);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:20px; line-height:1.5;
+  }
+  header{
+    background:var(--negro); color:#fff; padding:22px 20px; text-align:center;
+    border-bottom:4px solid var(--dorado);
+  }
+  header .logo{font-size:26px; font-weight:800; letter-spacing:.3px}
+  header .logo span{color:var(--dorado-claro)}
+  header p{margin:6px 0 0; color:#d8d3c4; font-size:17px}
+  main{max-width:640px; margin:0 auto; padding:28px 18px 60px}
+  .tarjeta{
+    background:var(--tarjeta); border:1px solid var(--borde); border-radius:18px;
+    padding:26px; margin-bottom:22px; box-shadow:0 6px 20px rgba(0,0,0,.05);
+  }
+  h1{font-size:26px; margin:0 0 8px}
+  h2{font-size:22px; margin:0 0 14px}
+  label{display:block; font-weight:700; margin-bottom:8px; font-size:19px}
+  input[type=url], input[type=text]{
+    width:100%; font-size:20px; padding:16px; border-radius:12px;
+    border:2px solid var(--borde); margin-bottom:6px; background:#fff;
+  }
+  input:focus{outline:3px solid var(--dorado-claro); border-color:var(--dorado)}
+  .ayuda{color:var(--gris); font-size:16px; margin:0 0 16px}
+  .o-separador{
+    text-align:center; color:var(--gris); font-size:16px; margin:18px 0;
+    display:flex; align-items:center; gap:12px;
+  }
+  .o-separador::before, .o-separador::after{content:""; flex:1; height:1px; background:var(--borde)}
+  .subir{
+    display:block; text-align:center; border:2px dashed var(--borde); border-radius:14px;
+    padding:22px; cursor:pointer; font-weight:700; color:var(--gris);
+  }
+  .subir input{display:none}
+  .subir.tiene-archivo{border-color:var(--verde); color:var(--verde)}
+  button.principal{
+    width:100%; font-size:22px; font-weight:800; padding:20px; border:none;
+    border-radius:14px; background:linear-gradient(135deg,var(--dorado-claro),var(--dorado));
+    color:var(--negro); cursor:pointer; margin-top:18px; box-shadow:0 4px 14px rgba(212,160,32,.35);
+  }
+  button.principal:disabled{opacity:.5; cursor:not-allowed}
+  button.secundario{
+    width:100%; font-size:18px; font-weight:700; padding:14px; border-radius:12px;
+    border:2px solid var(--borde); background:#fff; cursor:pointer; margin-top:10px;
+  }
+  .estado{display:none; text-align:center; padding:30px 10px}
+  .estado.activo{display:block}
+  .aro{
+    width:56px; height:56px; margin:0 auto 16px; border-radius:50%;
+    border:6px solid var(--borde); border-top-color:var(--dorado);
+    animation:girar 1s linear infinite;
+  }
+  @keyframes girar{to{transform:rotate(360deg)}}
+  .estado p{font-size:19px; color:var(--gris); margin:4px 0}
+  .semaforo{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+  .luz{width:26px; height:26px; border-radius:50%; flex:none}
+  .luz.verde{background:var(--verde); box-shadow:0 0 14px var(--verde)}
+  .luz.amarillo{background:var(--amarillo); box-shadow:0 0 14px var(--amarillo)}
+  .luz.rojo{background:var(--rojo); box-shadow:0 0 14px var(--rojo)}
+  .semaforo .etiqueta{font-size:22px; font-weight:800}
+  .confianza{font-size:15px; color:var(--gris); background:#f2ede0; padding:4px 10px; border-radius:999px; margin-left:auto}
+  .razones{margin:0; padding-left:20px}
+  .razones li{margin-bottom:6px}
+  .escena{border-left:4px solid var(--dorado); padding:10px 0 10px 16px; margin-bottom:14px}
+  .escena .tiempo{font-size:14px; color:var(--gris); font-weight:700}
+  .escena .voz{font-style:italic; margin:4px 0}
+  .escena .pantalla{font-size:15px; color:var(--gris)}
+  .angulo{
+    display:inline-block; background:var(--negro); color:var(--dorado-claro);
+    font-size:14px; font-weight:700; padding:4px 12px; border-radius:999px; margin-bottom:10px;
+  }
+  .caption{
+    background:#f7f3e9; border:1px solid var(--borde); border-radius:12px;
+    padding:14px; font-size:17px; margin-top:12px; white-space:pre-wrap;
+  }
+  .acciones-version{display:flex; gap:10px; margin-top:14px}
+  .acciones-version button{flex:1; font-size:16px; padding:12px; border-radius:10px; border:2px solid var(--borde); background:#fff; cursor:pointer; font-weight:700}
+  .oculto{display:none !important}
+  .error-caja{
+    background:#fdeceb; border:1px solid #f2b8b2; color:var(--rojo);
+    padding:16px; border-radius:12px; font-size:17px;
+  }
+  footer{text-align:center; color:var(--gris); font-size:14px; padding:20px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">JR360 <span>Multiplicador de Reels</span></div>
+  <p>Parte de una estructura que ya funcionó y hazla tuya</p>
+</header>
+
+<main>
+
+  <!-- PASO 1: entrada -->
+  <section class="tarjeta" id="paso-entrada">
+    <h1>Pega el link de un Reel</h1>
+    <p class="ayuda">Puede ser uno tuyo o de otra persona. No prometemos que "se vuelva viral" — te mostramos la estructura comprobada que trae, para que la repitas con tu contenido.</p>
+
+    <label for="url-reel">Link de Instagram</label>
+    <input type="url" id="url-reel" placeholder="https://www.instagram.com/reel/...">
+
+    <div class="o-separador">o si el link no funciona</div>
+
+    <label class="subir" id="etiqueta-subida" for="archivo-video">
+      📹 Toca aquí para subir el video
+      <input type="file" id="archivo-video" accept="video/mp4,video/quicktime,video/webm">
+    </label>
+
+    <div class="o-separador">opcional, para un análisis más profundo</div>
+    <label class="subir" id="etiqueta-captura" for="archivo-captura">
+      📊 Sube la foto de "Estadísticas" del Reel
+      <input type="file" id="archivo-captura" accept="image/*">
+    </label>
+
+    <label for="tema" style="margin-top:20px">¿De qué trata tu cuenta? (opcional)</label>
+    <input type="text" id="tema" placeholder="Ej: vendo seguros, cocina casera, clases de guitarra">
+
+    <button class="principal" id="btn-analizar">Analizar este Reel</button>
+  </section>
+
+  <!-- ESTADO: cargando -->
+  <section class="tarjeta estado" id="paso-cargando">
+    <div class="aro"></div>
+    <p id="texto-carga">Descargando el video…</p>
+    <p style="font-size:15px">Puede tardar hasta 2 minutos.</p>
+  </section>
+
+  <!-- ESTADO: error -->
+  <section class="tarjeta estado" id="paso-error">
+    <div class="error-caja" id="texto-error"></div>
+    <button class="secundario" id="btn-reintentar">Intentar de nuevo</button>
+  </section>
+
+  <!-- PASO 2: resultado del análisis -->
+  <section class="tarjeta oculto" id="paso-resultado">
+    <div class="semaforo">
+      <div class="luz" id="luz-semaforo"></div>
+      <div class="etiqueta" id="texto-veredicto"></div>
+      <div class="confianza" id="texto-confianza"></div>
+    </div>
+
+    <h2 id="titulo-razones">Por qué</h2>
+    <ul class="razones" id="lista-razones"></ul>
+
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer; font-weight:700">Ver la estructura del video, escena por escena</summary>
+      <div id="lista-escenas" style="margin-top:14px"></div>
+    </details>
+
+    <h2 style="margin-top:24px">¿Qué quieres mantener y qué cambiar?</h2>
+
+    <label>Formato</label>
+    <div class="acciones-version" id="grupo-formato">
+      <button data-val="face" class="elegido">Mi cara</button>
+      <button data-val="voiceover">Voz en off</button>
+      <button data-val="text_only">Solo texto</button>
+    </div>
+
+    <label style="margin-top:14px">Dónde grabas</label>
+    <div class="acciones-version" id="grupo-escenario">
+      <button data-val="same" class="elegido">Igual al original</button>
+      <button data-val="business">Mi negocio</button>
+      <button data-val="home">Mi casa</button>
+    </div>
+
+    <label style="margin-top:14px">Cuántas versiones</label>
+    <div class="acciones-version" id="grupo-versiones">
+      <button data-val="3" class="elegido">3</button>
+      <button data-val="6">6</button>
+    </div>
+
+    <button class="principal" id="btn-multiplicar">Generar mis guiones</button>
+  </section>
+
+  <!-- PASO 3: guiones -->
+  <section class="tarjeta oculto" id="paso-guiones"></section>
+
+</main>
+
+<footer>© JR360 IA Agency — hecho con IA para que grabes hoy</footer>
+
+<script>
+// ponytail: API_BASE se define aquí en build/deploy, no hay backend propio en el navegador
+const API_BASE = window.API_BASE || "https://reel-api.TU-DOMINIO/webhook/v1";
+
+const el = (id) => document.getElementById(id);
+const mostrarSolo = (idVisible) => {
+  ["paso-entrada","paso-cargando","paso-error","paso-resultado","paso-guiones"]
+    .forEach(id => el(id).classList.toggle("oculto", id !== idVisible) );
+  // paso-entrada/cargando/error usan .activo en vez de .oculto porque son <section class="tarjeta estado">
+  el("paso-cargando").classList.toggle("activo", idVisible === "paso-cargando");
+  el("paso-error").classList.toggle("activo", idVisible === "paso-error");
+};
+
+let ultimoAnalisis = null; // guarda { analysis_id, dna, original_verdict }
+let eleccion = { format: "face", setting: "same", versions: 3 };
+
+function elegirBoton(grupoId, campo){
+  el(grupoId).addEventListener("click", (e) => {
+    const btn = e.target.closest("button"); if(!btn) return;
+    [...el(grupoId).children].forEach(b => b.classList.remove("elegido"));
+    btn.classList.add("elegido");
+    eleccion[campo] = campo === "versions" ? Number(btn.dataset.val) : btn.dataset.val;
+  });
+}
+elegirBoton("grupo-formato","format");
+elegirBoton("grupo-escenario","setting");
+elegirBoton("grupo-versiones","versions");
+
+async function esperarJob(pollUrl){
+  while(true){
+    const r = await fetch(API_BASE + pollUrl);
+    const data = await r.json();
+    if(data.status === "completed") return data;
+    if(data.status === "failed" || data.ok === false) throw new Error(mensajeError(data));
+    if(data.status === "needs_upload") return data;
+    await new Promise(res => setTimeout(res, (data.retry_after_seconds || 3) * 1000));
+  }
+}
+
+function mensajeError(data){
+  const codigo = data.error?.code || data.error_code || "";
+  const mapa = {
+    TOO_LARGE: "El video pesa demasiado. Prueba con uno de menos de 150 MB.",
+    TOO_LONG: "El video dura más de 3 minutos. Usa uno más corto.",
+    QUOTA_EXHAUSTED: "Llegamos al límite de análisis de hoy. Intenta mañana.",
+    INVALID_MEDIA: "No pudimos leer ese archivo. Prueba con otro video.",
+  };
+  return mapa[codigo] || "Algo falló. Intenta de nuevo en un momento.";
+}
+
+el("btn-analizar").addEventListener("click", async () => {
+  const url = el("url-reel").value.trim();
+  const archivoVideo = el("archivo-video").files[0];
+  const archivoCaptura = el("archivo-captura").files[0];
+  const tema = el("tema").value.trim();
+
+  if(!url && !archivoVideo){
+    mostrarError("Pega un link de Instagram o sube tu video.");
+    return;
+  }
+
+  mostrarSolo("paso-cargando");
+  el("texto-carga").textContent = url ? "Descargando el video…" : "Subiendo tu video…";
+
+  try{
+    let body, headers = {};
+    if(archivoVideo){
+      body = new FormData();
+      body.append("video", archivoVideo);
+      if(archivoCaptura) body.append("insights", archivoCaptura);
+    } else {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify({ source: { type: "instagram_url", url } });
+    }
+    const inicio = await fetch(API_BASE + "/analizar", { method:"POST", headers, body });
+    const datoInicio = await inicio.json();
+    if(datoInicio.ok === false) throw new Error(mensajeError(datoInicio));
+
+    el("texto-carga").textContent = "Analizando la estructura del video…";
+    const resultado = await esperarJob(datoInicio.poll_url);
+
+    if(resultado.status === "needs_upload"){
+      mostrarSolo("paso-entrada");
+      el("etiqueta-subida").classList.add("tiene-archivo");
+      mostrarError(resultado.upload_reason || "No pudimos abrir ese link. Sube el video directamente.");
+      return;
+    }
+
+    ultimoAnalisis = { analysis_id: resultado.job_id, dna: resultado.dna, original_verdict: resultado.analysis, tema };
+    pintarResultado(resultado);
+    mostrarSolo("paso-resultado");
+  } catch(err){
+    mostrarError(err.message || "Algo falló. Intenta de nuevo.");
+  }
+});
+
+function mostrarError(msg){
+  el("texto-error").textContent = msg;
+  mostrarSolo("paso-error");
+}
+el("btn-reintentar").addEventListener("click", () => mostrarSolo("paso-entrada"));
+
+function pintarResultado(r){
+  const a = r.analysis;
+  const colorLuz = { viral:"verde", medio:"amarillo", no_viral:"rojo" }[a.traffic_light] || "amarillo";
+  el("luz-semaforo").className = "luz " + colorLuz;
+  el("texto-veredicto").textContent = a.label || "Estructura analizada";
+  el("texto-confianza").textContent = "confianza " + (a.confidence === "high" ? "alta" : a.confidence === "low" ? "baja" : "media");
+
+  el("titulo-razones").textContent = a.traffic_light === "no_viral" ? "Qué le faltó" : "Qué lo hizo funcionar";
+  el("lista-razones").innerHTML = (a.reasons || []).map(t => `<li>${t}</li>`).join("");
+  if(a.gaps?.length) el("lista-razones").innerHTML += a.gaps.map(t => `<li>${t}</li>`).join("");
+
+  el("lista-escenas").innerHTML = (r.dna?.structure || []).map(e => `
+    <div class="escena">
+      <div class="tiempo">${e.start}s – ${e.end}s · ${e.role}</div>
+      <div class="voz">"${e.spoken || ""}"</div>
+      <div class="pantalla">En pantalla: ${e.on_screen || "—"}</div>
+    </div>
+  `).join("");
+}
+
+el("btn-multiplicar").addEventListener("click", async () => {
+  mostrarSolo("paso-cargando");
+  el("texto-carga").textContent = "Escribiendo tus guiones…";
+  try{
+    const r = await fetch(API_BASE + "/multiplicar", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        analysis_id: ultimoAnalisis.analysis_id,
+        dna: ultimoAnalisis.dna,
+        original_verdict: ultimoAnalisis.original_verdict,
+        choices: { topic: ultimoAnalisis.tema || "", format: eleccion.format, setting: eleccion.setting, language: "es", versions: eleccion.versions },
+        generation: { mode: "new_angles", exclude_angles: [] }
+      })
+    });
+    const data = await r.json();
+    if(data.ok === false) throw new Error(mensajeError(data));
+    pintarGuiones(data.versions);
+    mostrarSolo("paso-guiones");
+  } catch(err){
+    mostrarError(err.message || "Algo falló generando los guiones.");
+  }
+});
+
+function pintarGuiones(versiones){
+  el("paso-guiones").innerHTML = `<h2>Tus guiones, listos para grabar</h2>` + versiones.map((v,i) => `
+    <div class="tarjeta" style="margin-top:${i===0?0:16}px">
+      <span class="angulo">Versión ${i+1} · ${v.angle}</span>
+      <p style="font-size:19px; font-weight:700">"${v.hook}"</p>
+      ${v.script.map(s => `
+        <div class="escena">
+          <div class="tiempo">${s.start}s – ${s.end}s</div>
+          <div class="voz">${s.voice || "(sin voz — solo texto)"}</div>
+          <div class="pantalla">Pantalla: ${s.on_screen}</div>
+        </div>`).join("")}
+      <div class="caption">${v.caption}</div>
+      <div class="acciones-version">
+        <button onclick="escucharTexto(${i})">🔊 Escúchalo</button>
+        <button onclick="enviarWhatsApp(${i})">💬 Mándalo a mi WhatsApp</button>
+      </div>
+    </div>
+  `).join("") + `<button class="secundario" style="margin-top:18px" onclick="location.reload()">Analizar otro Reel</button>`;
+  window.__versiones = versiones;
+}
+
+function escucharTexto(i){
+  const v = window.__versiones[i];
+  const texto = v.hook + ". " + v.script.map(s => s.voice).join(". ");
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = "es-ES";
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+function enviarWhatsApp(i){
+  const v = window.__versiones[i];
+  const texto = encodeURIComponent(`${v.hook}\n\n${v.script.map(s => `(${s.start}s-${s.end}s) ${s.voice}\nPantalla: ${s.on_screen}`).join("\n\n")}\n\nCaption:\n${v.caption}`);
+  window.open(`https://wa.me/?text=${texto}`, "_blank");
+}
+
+el("archivo-video").addEventListener("change", () => {
+  if(el("archivo-video").files[0]) el("etiqueta-subida").classList.add("tiene-archivo");
+});
+el("archivo-captura").addEventListener("change", () => {
+  if(el("archivo-captura").files[0]) el("etiqueta-captura").classList.add("tiene-archivo");
+});
+</script>
+
+</body>
+</html>
