@@ -119,10 +119,10 @@
 <header><div class="brand">JR360 <span>Multiplicador de Reels</span></div></header>
 <main>
   <section class="panel" id="screen-entry">
-    <h1>Vende más con tus videos</h1>
-    <p class="subtitle">Pega un video que funcionó. Te decimos por qué funciona y te damos 3 guiones para tu producto, listos para grabar hoy.</p>
+    <h1>Haz videos que la gente vea completos, comparta y te compre</h1>
+    <p class="subtitle">Pega un video que funcionó. Te decimos por qué funciona y te damos 3 guiones para lo tuyo, listos para grabar hoy.</p>
     <ul class="benefits">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h16M6 17l4-4 3 3 5-7"/><path d="M14 9h4v4"/></svg><span>Sabes qué grabar para vender</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h16M6 17l4-4 3 3 5-7"/><path d="M14 9h4v4"/></svg><span>Sabes qué grabar y por qué</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l2.2 4.5L19 9l-3.5 3.4.8 4.8L12 15l-4.3 2.2.8-4.8L5 9l4.8-1.5L12 3z"/></svg><span>Aprendes la técnica que Instagram premia hoy</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Puedes grabar sin mostrar tu cara</span></li>
     </ul>
@@ -140,7 +140,7 @@
       <p>En Instagram: toca los tres puntos (···) del video y elige Copiar enlace. En TikTok: toca Compartir y elige Copiar enlace.</p>
     </details>
     <button class="secondary hidden" id="example-button" type="button">Ver un ejemplo</button>
-    <p class="tip">Graba tú el video: Instagram muestra menos los videos reciclados de la marca.</p>
+    <p class="tip">Graba tú el video: Instagram muestra menos los videos reciclados o copiados.</p>
     <p class="privacy">Tu video lo analiza Google Gemini y lo borramos al terminar. Google puede usar el contenido para mejorar sus modelos. Sube solo videos que tengas derecho a usar.</p>
   </section>
 
@@ -165,9 +165,18 @@
     </details>
     <div class="adapt">
       <h2>Prepara tu versión</h2>
-      <label for="business-topic">¿Qué producto vendes?</label>
-      <input id="business-topic" type="text" placeholder="Ejemplo: crema de noche, labiales, perfumes" autocomplete="off" required>
-      <p class="field-error hidden" id="topic-error">Escribe el producto antes de continuar.</p>
+      <p class="field-label">¿Para qué es tu video?</p>
+      <div class="choices two" id="goal-choices">
+        <button class="choice" type="button" data-value="sell_product">Vender un producto</button>
+        <button class="choice" type="button" data-value="sell_service">Ofrecer un servicio</button>
+        <button class="choice" type="button" data-value="grow">Ganar seguidores</button>
+        <button class="choice" type="button" data-value="personal_brand">Mi marca personal</button>
+      </div>
+      <p class="field-error hidden" id="goal-error">Elige para qué es tu video antes de continuar.</p>
+
+      <label for="business-topic" id="topic-label">¿De qué trata tu cuenta?</label>
+      <input id="business-topic" type="text" placeholder="Ejemplo: recetas saludables, consejos para abuelas" autocomplete="off" required>
+      <p class="field-error hidden" id="topic-error">Escribe el tema antes de continuar.</p>
 
       <p class="field-label">¿Cómo quieres aparecer?</p>
       <div class="choices" id="format-choices">
@@ -210,7 +219,7 @@ let originalInput = null;
 let lastAnalysis = null;
 let versions = [];
 let previousScreen = "screen-entry";
-const choices = {format:"face",setting:"home",versions:3};
+const choices = {goal:null,format:"face",setting:"home",versions:3};
 
 function showScreen(id){
   screens.forEach(screen => el(screen).classList.toggle("hidden",screen !== id));
@@ -312,11 +321,12 @@ function listHtml(items,emptyText){
 
 const SIGNAL_LABELS = {
   hook:"Gancho del primer segundo",
-  product_proof:"Se ve el producto y su resultado",
+  proof:"Demuestra lo que promete",
   pacing:"Ritmo: no aburre",
   shareability:"Se comparte o se guarda",
-  sales_cta:"Dice cómo comprar"
+  cta:"Dice qué hacer al final"
 };
+const SIGNAL_FALLBACKS = {proof:"product_proof",cta:"sales_cta"};
 
 function signalsHtml(signals){
   if(!signals || typeof signals !== "object") return "";
@@ -324,7 +334,9 @@ function signalsHtml(signals){
   return `<section class="scorecard" aria-labelledby="scorecard-title">
     <h3 id="scorecard-title">Boleta del video</h3>
     ${rows.map(([key,label]) => {
-      const signal = signals[key] && typeof signals[key] === "object" ? signals[key] : {};
+      const fallbackKey = SIGNAL_FALLBACKS[key];
+      const candidate = signals[key] || (fallbackKey ? signals[fallbackKey] : null);
+      const signal = candidate && typeof candidate === "object" ? candidate : {};
       const rawScore = Number(signal.score);
       const score = Number.isFinite(rawScore) ? Math.max(0,Math.min(10,rawScore)) : 0;
       const color = score >= 7 ? "green" : score >= 4 ? "amber" : "red";
@@ -372,6 +384,18 @@ function setChoice(groupId,key){
     el(groupId).querySelectorAll("button").forEach(item => item.classList.toggle("selected",item === button));
     choices[key] = key === "versions" ? Number(button.dataset.value) : button.dataset.value;
     if(key === "versions") el("multiply-button").textContent = `Crear mis ${choices.versions} guiones`;
+    if(key === "goal"){
+      el("goal-error").classList.add("hidden");
+      const topicCopy = {
+        sell_product:["¿Qué producto vendes?","Ejemplo: crema de noche, perfumes, ropa","Escribe el producto antes de continuar."],
+        sell_service:["¿Qué servicio ofreces?","Ejemplo: clases de cocina, seguros, peluquería","Escribe el servicio antes de continuar."],
+        grow:["¿De qué trata tu cuenta?","Ejemplo: recetas saludables, consejos para abuelas","Escribe el tema antes de continuar."],
+        personal_brand:["¿De qué trata tu cuenta?","Ejemplo: recetas saludables, consejos para abuelas","Escribe el tema antes de continuar."]
+      }[choices.goal];
+      el("topic-label").textContent = topicCopy[0];
+      el("business-topic").placeholder = topicCopy[1];
+      el("topic-error").textContent = topicCopy[2];
+    }
   });
 }
 
@@ -464,19 +488,21 @@ el("retry-button").addEventListener("click",() => showScreen(originalInput ? "sc
 el("add-insights").addEventListener("click",() => el("insights-file").click());
 el("insights-file").addEventListener("change",() => {const file=el("insights-file").files[0];if(file) runAnalysis(file);});
 el("business-topic").addEventListener("input",() => el("topic-error").classList.add("hidden"));
+setChoice("goal-choices","goal");
 setChoice("format-choices","format");
 setChoice("setting-choices","setting");
 setChoice("version-choices","versions");
 
 el("multiply-button").addEventListener("click",async() => {
   const topic = el("business-topic").value.trim();
+  if(!choices.goal){el("goal-error").classList.remove("hidden");el("goal-choices").querySelector("button").focus();return;}
   if(!topic){el("topic-error").classList.remove("hidden");el("business-topic").focus();return;}
   showScreen("screen-wait");
   el("progress-text").textContent = "Creando tus guiones…";
   try{
     const response = await fetch(API_BASE + "/multiplicar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
       analysis_id:lastAnalysis.analysis_id,dna:lastAnalysis.dna,original_verdict:lastAnalysis.original_verdict,
-      choices:{topic,format:choices.format,setting:choices.setting,language:"es",versions:choices.versions},
+      choices:{goal:choices.goal,topic,format:choices.format,setting:choices.setting,language:"es",versions:choices.versions},
       generation:{mode:"new_angles",exclude_angles:[]}
     })});
     const data = await response.json();
