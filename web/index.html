@@ -132,6 +132,7 @@
     <input type="text" id="tema" placeholder="Ej: vendo seguros, cocina casera, clases de guitarra">
 
     <button class="principal" id="btn-analizar">Analizar este Reel</button>
+    <p class="ayuda" style="margin-top:14px; font-size:14px">Tu video lo analiza Google Gemini y lo borramos al terminar. Google puede usar el contenido para mejorar sus modelos. Sube solo videos que tengas derecho a usar.</p>
   </section>
 
   <!-- ESTADO: cargando -->
@@ -197,9 +198,11 @@
 
 <script>
 // ponytail: API_BASE se define aquí en build/deploy, no hay backend propio en el navegador
-const API_BASE = window.API_BASE || "https://reel-api.TU-DOMINIO/webhook/v1";
+const API_BASE = window.API_BASE || "https://jr360iaagency-n8n.rjyuex.easypanel.host/webhook/v1";
 
 const el = (id) => document.getElementById(id);
+// El texto viene del modelo (derivado de un video ajeno): siempre escapado antes de innerHTML.
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const mostrarSolo = (idVisible) => {
   ["paso-entrada","paso-cargando","paso-error","paso-resultado","paso-guiones"]
     .forEach(id => el(id).classList.toggle("oculto", id !== idVisible) );
@@ -299,20 +302,19 @@ el("btn-reintentar").addEventListener("click", () => mostrarSolo("paso-entrada")
 
 function pintarResultado(r){
   const a = r.analysis;
-  const colorLuz = { viral:"verde", medio:"amarillo", no_viral:"rojo" }[a.traffic_light] || "amarillo";
+  const colorLuz = { viral:"verde", potential:"amarillo", low:"rojo" }[a.traffic_light] || "amarillo";
   el("luz-semaforo").className = "luz " + colorLuz;
   el("texto-veredicto").textContent = a.label || "Estructura analizada";
   el("texto-confianza").textContent = "confianza " + (a.confidence === "high" ? "alta" : a.confidence === "low" ? "baja" : "media");
 
-  el("titulo-razones").textContent = a.traffic_light === "no_viral" ? "Qué le faltó" : "Qué lo hizo funcionar";
-  el("lista-razones").innerHTML = (a.reasons || []).map(t => `<li>${t}</li>`).join("");
-  if(a.gaps?.length) el("lista-razones").innerHTML += a.gaps.map(t => `<li>${t}</li>`).join("");
+  el("titulo-razones").textContent = a.traffic_light === "low" ? "Qué le faltó" : "Qué lo hizo funcionar";
+  el("lista-razones").innerHTML = [...(a.reasons || []), ...(a.gaps || [])].map(t => `<li>${esc(t)}</li>`).join("");
 
   el("lista-escenas").innerHTML = (r.dna?.structure || []).map(e => `
     <div class="escena">
-      <div class="tiempo">${e.start}s – ${e.end}s · ${e.role}</div>
-      <div class="voz">"${e.spoken || ""}"</div>
-      <div class="pantalla">En pantalla: ${e.on_screen || "—"}</div>
+      <div class="tiempo">${esc(e.start)}s – ${esc(e.end)}s · ${esc(e.role)}</div>
+      <div class="voz">"${esc(e.spoken)}"</div>
+      <div class="pantalla">En pantalla: ${esc(e.on_screen || "—")}</div>
     </div>
   `).join("");
 }
@@ -327,12 +329,13 @@ el("btn-multiplicar").addEventListener("click", async () => {
         analysis_id: ultimoAnalisis.analysis_id,
         dna: ultimoAnalisis.dna,
         original_verdict: ultimoAnalisis.original_verdict,
-        choices: { topic: ultimoAnalisis.tema || "", format: eleccion.format, setting: eleccion.setting, language: "es", versions: eleccion.versions },
+        choices: { topic: ultimoAnalisis.tema || "el mismo tema del video original", format: eleccion.format, setting: eleccion.setting, language: "es", versions: eleccion.versions },
         generation: { mode: "new_angles", exclude_angles: [] }
       })
     });
     const data = await r.json();
     if(data.ok === false) throw new Error(mensajeError(data));
+    if(!Array.isArray(data.versions)) throw new Error("No pudimos generar los guiones. Intenta de nuevo.");
     pintarGuiones(data.versions);
     mostrarSolo("paso-guiones");
   } catch(err){
@@ -343,15 +346,15 @@ el("btn-multiplicar").addEventListener("click", async () => {
 function pintarGuiones(versiones){
   el("paso-guiones").innerHTML = `<h2>Tus guiones, listos para grabar</h2>` + versiones.map((v,i) => `
     <div class="tarjeta" style="margin-top:${i===0?0:16}px">
-      <span class="angulo">Versión ${i+1} · ${v.angle}</span>
-      <p style="font-size:19px; font-weight:700">"${v.hook}"</p>
-      ${v.script.map(s => `
+      <span class="angulo">Versión ${i+1} · ${esc(v.angle)}</span>
+      <p style="font-size:19px; font-weight:700">"${esc(v.hook)}"</p>
+      ${(v.script || []).map(s => `
         <div class="escena">
-          <div class="tiempo">${s.start}s – ${s.end}s</div>
-          <div class="voz">${s.voice || "(sin voz — solo texto)"}</div>
-          <div class="pantalla">Pantalla: ${s.on_screen}</div>
+          <div class="tiempo">${esc(s.start)}s – ${esc(s.end)}s</div>
+          <div class="voz">${s.voice ? esc(s.voice) : "(sin voz — solo texto)"}</div>
+          <div class="pantalla">Pantalla: ${esc(s.on_screen)}</div>
         </div>`).join("")}
-      <div class="caption">${v.caption}</div>
+      <div class="caption">${esc(v.caption)}</div>
       <div class="acciones-version">
         <button onclick="escucharTexto(${i})">🔊 Escúchalo</button>
         <button onclick="enviarWhatsApp(${i})">💬 Mándalo a mi WhatsApp</button>

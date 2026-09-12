@@ -2,69 +2,177 @@
   "name": "JR360 - Multiplicar Reel v1",
   "nodes": [
     {
-      "parameters": { "httpMethod": "POST", "path": "v1/multiplicar", "responseMode": "responseNode", "options": {} },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "v1/multiplicar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
       "id": "multiplicar-webhook",
       "name": "POST /multiplicar",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-700, 0],
+      "position": [
+        -700,
+        0
+      ],
       "webhookId": "REPLACE_MULTIPLICAR_WEBHOOK_ID"
     },
     {
       "parameters": {
-        "jsCode": "const body=$json.body||$json; const request_id='req_'+crypto.randomUUID().replaceAll('-','').slice(0,22); const fail=(code,message,statusCode=400)=>[{json:{route:'error',statusCode,body:{ok:false,error:{code,message,retryable:false},request_id}}}]; if(!body.dna||!Array.isArray(body.dna.structure)) return fail('INVALID_DNA','Falta un ADN válido.'); const c=body.choices||{}; const missing=['topic','format','setting','language','versions'].filter(k=>c[k]===undefined||c[k]===null||c[k]===''); if(missing.length){return [{json:{route:'approval',statusCode:200,body:{ok:true,status:'needs_approval',analysis_id:body.analysis_id||null,suggested_choices:{topic:c.topic||'',format:c.format||'face',setting:c.setting||'same',language:c.language||body.dna.language||'es',versions:c.versions||3},request_id}}}];} if(!['face','voiceover','text_only'].includes(c.format)||!['home','business','street','same'].includes(c.setting)||!['es','en'].includes(c.language)||![3,6].includes(Number(c.versions))) return fail('INVALID_CHOICES','Las elecciones no son válidas.'); if(JSON.stringify(body).length>500000) return fail('PAYLOAD_TOO_LARGE','La solicitud es demasiado grande.',413); return [{json:{route:'generate',request_id,input:body,n:Number(c.versions)}}];"
+        "jsCode": "const body=$json.body||$json; const request_id='req_'+(Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replaceAll('-','').slice(0,22); const fail=(code,message,statusCode=400)=>[{json:{route:'error',statusCode,body:{ok:false,error:{code,message,retryable:false},request_id}}}]; if(!body.dna||!Array.isArray(body.dna.structure)) return fail('INVALID_DNA','Falta un ADN válido.'); const c=body.choices||{}; const missing=['topic','format','setting','language','versions'].filter(k=>c[k]===undefined||c[k]===null||c[k]===''); if(missing.length){return [{json:{route:'approval',statusCode:200,body:{ok:true,status:'needs_approval',analysis_id:body.analysis_id||null,suggested_choices:{topic:c.topic||'',format:c.format||'face',setting:c.setting||'same',language:c.language||body.dna.language||'es',versions:c.versions||3},request_id}}}];} if(!['face','voiceover','text_only'].includes(c.format)||!['home','business','street','same'].includes(c.setting)||!['es','en'].includes(c.language)||![3,6].includes(Number(c.versions))) return fail('INVALID_CHOICES','Las elecciones no son válidas.'); if(JSON.stringify(body).length>500000) return fail('PAYLOAD_TOO_LARGE','La solicitud es demasiado grande.',413); return [{json:{route:'generate',request_id,input:body,n:Number(c.versions)}}];"
       },
       "id": "validate",
       "name": "Validar o pedir aprobación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-470, 0]
+      "position": [
+        -470,
+        0
+      ]
     },
     {
-      "parameters": { "conditions": { "conditions": [{ "leftValue": "={{ $json.route }}", "rightValue": "generate", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" } },
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "generate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "cond-2"
+            }
+          ],
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        }
+      },
       "id": "route-if",
       "name": "Generar",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-240, 0]
+      "position": [
+        -240,
+        0
+      ]
     },
     {
-      "parameters": { "respondWith": "json", "responseBody": "={{ $json.body }}", "options": { "responseCode": "={{ $json.statusCode }}" } },
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}"
+        }
+      },
       "id": "early-response",
       "name": "Responder validación",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [0, 160]
+      "position": [
+        0,
+        160
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const j=$json; const input=j.input; const n=j.n; const apiKey=$env.GEMINI_API_KEY; const model=$env.GEMINI_MODEL||'gemini-2.5-flash'; const http=this.helpers.httpRequest.bind(this.helpers); const schema={type:'object',additionalProperties:false,required:['applied_structure','versions'],properties:{applied_structure:{type:'string',enum:['original','corrected']},versions:{type:'array',minItems:3,maxItems:6,items:{type:'object',required:['id','angle','hook','script','shooting_plan','caption'],properties:{id:{type:'string'},angle:{type:'string'},hook:{type:'string'},script:{type:'array',items:{type:'object',required:['start','end','voice','on_screen']}},shooting_plan:{type:'array',items:{type:'object',required:['start','end','location','shot','action','on_screen']}},caption:{type:'string'}}}}}}; const base=`Eres guionista de Reels para una persona no técnica. Entrada: ADN, veredicto y elecciones. Genera exactamente ${n} versiones, cada una con ángulo distinto y no incluido en exclude_angles. Conserva roles, orden y duración de cada bloque del ADN; adapta tema, formato, escenario e idioma. Si el veredicto no es viral, corrige primero las debilidades indicadas sin alargar la duración. El texto hablado debe poder decirse en el intervalo (máximo 2.5 palabras/segundo en español y 2.8 en inglés). Para text_only, voice debe ser cadena vacía; para voiceover, no ordenes mirar a cámara. No copies frases distintivas del original salvo expresiones funcionales breves. No prometas resultados ni inventes datos. Caption listo para pegar, sin explicación. Devuelve solo JSON conforme al schema. Entrada: ${JSON.stringify(input)}`; const valid=(out)=>{if(!out||!Array.isArray(out.versions)||out.versions.length!==n)return false; const angles=out.versions.map(v=>String(v.angle||'').trim().toLowerCase()); if(new Set(angles).size!==n)return false; const excluded=new Set(input.generation?.exclude_angles||[]); if(angles.some(a=>excluded.has(a)))return false; const duration=Number(input.dna.duration_seconds)||0; return out.versions.every(v=>Array.isArray(v.script)&&v.script.length&&Math.abs(Number(v.script[0].start))<0.11&&Math.abs(Number(v.script[v.script.length-1].end)-duration)<0.25&&v.script.every((s,i,a)=>Number(s.end)>Number(s.start)&&(i===0||Math.abs(Number(s.start)-Number(a[i-1].end))<0.15))&&!(input.choices.format==='text_only'&&v.script.some(s=>s.voice!=='')));}; let out,lastError; for(let attempt=0;attempt<2;attempt++){try{const prompt=attempt?base+' Corrige la salida anterior: deben ser exactamente '+n+' ángulos únicos y las escenas deben cubrir de 0 a '+input.dna.duration_seconds+' sin huecos.':base; const response=await http({method:'POST',url:'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+apiKey,body:{contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',responseSchema:schema,temperature:0.7}},json:true,timeout:120000}); out=JSON.parse(response.candidates[0].content.parts[0].text); if(valid(out))break; lastError=new Error('invalid generation');}catch(e){lastError=e; if(e.statusCode===429||e.response?.statusCode===429)break;}} if(!valid(out)){const quota=lastError?.statusCode===429||lastError?.response?.statusCode===429; return [{json:{statusCode:quota?429:502,body:{ok:false,error:{code:quota?'QUOTA_EXHAUSTED':'GENERATION_FAILED',message:quota?'Llegamos al límite de análisis de hoy. Intenta mañana':'No pudimos generar versiones válidas.',retryable:!quota},request_id:j.request_id}}}];} return [{json:{statusCode:200,body:{ok:true,status:'completed',analysis_id:input.analysis_id||null,generation_id:'mul_'+crypto.randomUUID().replaceAll('-','').slice(0,22),applied_structure:out.applied_structure,versions:out.versions,request_id:j.request_id}}}];"
+        "jsCode": "const j=$json; const input=j.input; const n=j.n; const apiKey=$env.GEMINI_API_KEY; const model=$env.GEMINI_MODEL||'gemini-2.5-flash'; const http=this.helpers.httpRequest.bind(this.helpers); const schema={type:'object',additionalProperties:false,required:['applied_structure','versions'],properties:{applied_structure:{type:'string',enum:['original','corrected']},versions:{type:'array',minItems:3,maxItems:6,items:{type:'object',required:['id','angle','hook','script','shooting_plan','caption'],properties:{id:{type:'string'},angle:{type:'string'},hook:{type:'string'},script:{type:'array',items:{type:'object',required:['start','end','voice','on_screen']}},shooting_plan:{type:'array',items:{type:'object',required:['start','end','location','shot','action','on_screen']}},caption:{type:'string'}}}}}}; const base=`Eres guionista de Reels para una persona no técnica. Entrada: ADN, veredicto y elecciones. Genera exactamente ${n} versiones, cada una con ángulo distinto y no incluido en exclude_angles. Conserva roles, orden y duración de cada bloque del ADN; adapta tema, formato, escenario e idioma. Si el veredicto no es viral, corrige primero las debilidades indicadas sin alargar la duración. El texto hablado debe poder decirse en el intervalo (máximo 2.5 palabras/segundo en español y 2.8 en inglés). Para text_only, voice debe ser cadena vacía; para voiceover, no ordenes mirar a cámara. No copies frases distintivas del original salvo expresiones funcionales breves. No prometas resultados ni inventes datos. Caption listo para pegar, sin explicación. Devuelve solo JSON conforme al schema. Entrada: ${JSON.stringify(input)}`; const valid=(out)=>{if(!out||!Array.isArray(out.versions)||out.versions.length!==n)return false; const angles=out.versions.map(v=>String(v.angle||'').trim().toLowerCase()); if(new Set(angles).size!==n)return false; const excluded=new Set(input.generation?.exclude_angles||[]); if(angles.some(a=>excluded.has(a)))return false; const duration=Number(input.dna.duration_seconds)||0; return out.versions.every(v=>Array.isArray(v.script)&&v.script.length&&Math.abs(Number(v.script[0].start))<0.11&&Math.abs(Number(v.script[v.script.length-1].end)-duration)<0.25&&v.script.every((s,i,a)=>Number(s.end)>Number(s.start)&&(i===0||Math.abs(Number(s.start)-Number(a[i-1].end))<0.15))&&!(input.choices.format==='text_only'&&v.script.some(s=>s.voice!=='')));}; let out,lastError; for(let attempt=0;attempt<2;attempt++){try{const prompt=attempt?base+' Corrige la salida anterior: deben ser exactamente '+n+' ángulos únicos y las escenas deben cubrir de 0 a '+input.dna.duration_seconds+' sin huecos.':base; const response=await http({method:'POST',url:'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+apiKey,body:{contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',responseSchema:schema,temperature:0.7}},json:true,timeout:120000}); out=JSON.parse(response.candidates[0].content.parts[0].text); if(valid(out))break; lastError=new Error('invalid generation');}catch(e){lastError=e; if(String(e.statusCode||e.httpCode||e.response?.statusCode)==='429')break;}} if(!valid(out)){const quota=String(lastError?.statusCode||lastError?.httpCode||lastError?.response?.statusCode)==='429'; return [{json:{statusCode:quota?429:502,body:{ok:false,error:{code:quota?'QUOTA_EXHAUSTED':'GENERATION_FAILED',message:quota?'Llegamos al límite de análisis de hoy. Intenta mañana':'No pudimos generar versiones válidas.',retryable:!quota},request_id:j.request_id}}}];} return [{json:{statusCode:200,body:{ok:true,status:'completed',analysis_id:input.analysis_id||null,generation_id:'mul_'+(Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replaceAll('-','').slice(0,22),applied_structure:out.applied_structure,versions:out.versions,request_id:j.request_id}}}];"
       },
       "id": "gemini-generate",
       "name": "Gemini generar y validar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [0, -80]
+      "position": [
+        0,
+        -80
+      ]
     },
     {
-      "parameters": { "respondWith": "json", "responseBody": "={{ $json.body }}", "options": { "responseCode": "={{ $json.statusCode }}" } },
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}"
+        }
+      },
       "id": "generation-response",
       "name": "Responder multiplicación",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [250, -80]
+      "position": [
+        250,
+        -80
+      ]
     }
   ],
   "connections": {
-    "POST /multiplicar": { "main": [[{ "node": "Validar o pedir aprobación", "type": "main", "index": 0 }]] },
-    "Validar o pedir aprobación": { "main": [[{ "node": "Generar", "type": "main", "index": 0 }]] },
-    "Generar": { "main": [[{ "node": "Gemini generar y validar", "type": "main", "index": 0 }],[{ "node": "Responder validación", "type": "main", "index": 0 }]] },
-    "Gemini generar y validar": { "main": [[{ "node": "Responder multiplicación", "type": "main", "index": 0 }]] }
+    "POST /multiplicar": {
+      "main": [
+        [
+          {
+            "node": "Validar o pedir aprobación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar o pedir aprobación": {
+      "main": [
+        [
+          {
+            "node": "Generar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar": {
+      "main": [
+        [
+          {
+            "node": "Gemini generar y validar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder validación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini generar y validar": {
+      "main": [
+        [
+          {
+            "node": "Responder multiplicación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "pinData": {},
-  "settings": { "executionOrder": "v1", "saveManualExecutions": true },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
   "active": false,
   "versionId": "REPLACE_MULTIPLICAR_VERSION_ID",
-  "meta": { "templateCredsSetupCompleted": false },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
   "tags": []
 }
