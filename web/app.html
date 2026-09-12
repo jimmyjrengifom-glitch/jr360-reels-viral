@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>Multiplicador de Reels — JR360</title>
+<style>
+  :root{
+    --gold:#D4A020; --gold-light:#F0B83C; --green:#4EA010;
+    --black:#0a0a0a; --ink:#19170f; --warm:#f8f4e9; --paper:#fffefb;
+    --line:#d9d0bc; --muted:#5b574b; --red:#b52d22; --amber:#b97800;
+    --shadow:0 14px 36px rgba(48,38,12,.09);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--warm);color:var(--ink);font-family:Arial,"Helvetica Neue",sans-serif;font-size:20px;line-height:1.55}
+  button,input{font:inherit}
+  button{min-height:54px}
+  header{background:var(--black);color:#fff;border-bottom:4px solid var(--gold);padding:20px}
+  .brand{width:min(100%,980px);margin:auto;font-size:25px;font-weight:900;letter-spacing:-.4px}
+  .brand span{color:var(--gold-light);font-weight:700}
+  main{width:min(100%,780px);margin:auto;padding:36px 18px 64px}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:clamp(22px,5vw,42px);box-shadow:var(--shadow)}
+  h1,h2,h3,p{overflow-wrap:anywhere}
+  h1{font-size:clamp(30px,6vw,44px);line-height:1.12;letter-spacing:-1.2px;margin:0 0 14px}
+  h2{font-size:clamp(26px,4vw,34px);line-height:1.2;margin:0 0 20px}
+  h3{font-size:22px;line-height:1.25;margin:26px 0 10px}
+  p{margin:0 0 18px}
+  .subtitle{font-size:21px;color:var(--muted);max-width:620px;margin-bottom:28px}
+  .benefits{display:grid;gap:12px;margin:0 0 28px;padding:0;list-style:none}
+  .benefits li{display:flex;gap:12px;align-items:center;font-weight:800}
+  .benefits svg{width:28px;height:28px;flex:0 0 auto;color:#6d5108}
+  .quick-guide{margin:16px 0 0}
+  .tip{margin:22px 0 0;border-left:5px solid var(--gold);background:#f6f0df;padding:14px 16px;font-weight:800}
+  label,.field-label{display:block;font-weight:800;margin:0 0 9px}
+  input[type=url],input[type=text]{width:100%;min-height:58px;border:2px solid #aaa18d;border-radius:12px;background:#fff;color:var(--ink);padding:13px 15px;margin:0}
+  input::placeholder{color:#726d61}
+  :focus-visible{outline:4px solid rgba(240,184,60,.55);outline-offset:3px}
+  .primary,.secondary,.choice,.action,.link-button{cursor:pointer;border-radius:13px;font-weight:800}
+  .primary{width:100%;border:1px solid #b58108;background:linear-gradient(180deg,var(--gold-light),var(--gold));color:var(--black);padding:14px 20px;margin-top:18px;box-shadow:0 6px 18px rgba(212,160,32,.34),inset 0 1px rgba(255,255,255,.5);font-size:21px}
+  .primary:hover{filter:brightness(1.04)}
+  .primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+  .secondary{width:100%;border:2px solid #8d856f;background:#fff;color:var(--ink);padding:12px 18px;margin-top:14px}
+  .link-button{display:block;width:100%;border:0;background:transparent;color:#55400a;text-decoration:underline;text-underline-offset:4px;padding:12px;margin-top:8px}
+  .upload-box{display:block;border:2px dashed #8d856f;border-radius:14px;padding:18px;margin-top:8px;text-align:center;font-weight:800;cursor:pointer;background:#fff}
+  .upload-box.selected{border-color:var(--green);background:#f3faee;color:#2e6c09}
+  .upload-box input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .privacy{font-size:15px;line-height:1.45;color:#5e594d;margin:26px 0 0}
+  .hidden{display:none!important}
+  .wait{text-align:center;padding-block:48px}
+  .spinner{width:62px;height:62px;margin:0 auto 22px;border:7px solid #e5ddcb;border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .wait p{font-weight:800;font-size:22px}
+  .wait small{display:block;color:var(--muted);font-size:16px}
+  .error-box{border-left:6px solid var(--red);background:#fff2f0;padding:18px;border-radius:10px;color:#741b15;font-weight:700}
+  .verdict{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+  .light{width:32px;height:32px;border-radius:50%;flex:0 0 auto}
+  .light.green{background:var(--green);box-shadow:0 0 20px rgba(78,160,16,.7)}
+  .light.amber{background:#d18b05;box-shadow:0 0 20px rgba(209,139,5,.65)}
+  .light.red{background:var(--red);box-shadow:0 0 20px rgba(181,45,34,.55)}
+  .verdict-text{font-size:clamp(24px,4vw,30px);font-weight:900;line-height:1.2}
+  .criterion{color:var(--muted)}
+  .columns{display:grid;gap:16px;margin:24px 0}
+  .fact{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff}
+  .fact h3{margin:0 0 8px}
+  .fact ul{margin:0;padding-left:24px}
+  .fact li+li{margin-top:8px}
+  .scorecard{border:1px solid var(--line);border-radius:16px;padding:18px;margin:24px 0;background:#fff}
+  .scorecard h3{margin:0 0 16px}
+  .signal+.signal{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+  .signal-head{display:flex;justify-content:space-between;gap:14px;align-items:baseline;font-weight:900}
+  .signal-score{white-space:nowrap}
+  .score-track{height:13px;background:#e8e2d5;border-radius:999px;overflow:hidden;margin:8px 0 7px}
+  .score-fill{display:block;height:100%;border-radius:inherit}
+  .score-fill.green{background:var(--green)}
+  .score-fill.amber{background:#d18b05}
+  .score-fill.red{background:var(--red)}
+  .signal-fix{font-size:17px;color:var(--muted);margin:0}
+  details{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin:22px 0}
+  summary{cursor:pointer;font-weight:900;color:#4f3a06}
+  .scene{border-left:5px solid var(--gold);padding:5px 0 5px 16px;margin:20px 0}
+  .time{font-size:16px;font-weight:900;color:#5f5848;margin-bottom:7px}
+  .scene dl{margin:0}
+  .scene dt{font-weight:900;margin-top:8px}
+  .scene dd{margin:1px 0 0;color:#3f3b32;white-space:pre-wrap}
+  .adapt{margin-top:34px;padding-top:30px;border-top:3px solid var(--black)}
+  .choices{display:grid;gap:10px;margin-bottom:24px}
+  .choice{border:2px solid #958d78;background:#fff;color:var(--ink);padding:10px 12px}
+  .choice.selected{border-color:var(--black);background:var(--black);color:var(--gold-light);box-shadow:inset 0 0 0 2px var(--gold-light)}
+  .field-error{color:#9c2018;font-weight:700;font-size:17px;margin:7px 0 0}
+  .script-card{border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:22px;background:#fff;box-shadow:0 8px 22px rgba(48,38,12,.07)}
+  .script-note{border-left:5px solid var(--gold);background:#f6f0df;padding:14px 16px;margin-bottom:22px;font-weight:800}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px}
+  .tag{display:inline-block;border:1px solid #a59673;background:#fffaf0;border-radius:999px;padding:5px 11px;font-size:16px;font-weight:800}
+  .angle{display:inline-block;background:var(--black);color:var(--gold-light);border-radius:999px;padding:5px 12px;font-size:16px;font-weight:800}
+  .hook{font-size:23px;font-weight:900;line-height:1.3;margin:15px 0 22px}
+  .why{border:2px solid #cda53d;background:#fff8e7;border-radius:13px;padding:16px;margin:18px 0}
+  .why strong{display:block;margin-bottom:7px}
+  .why p{margin:5px 0}
+  mark{background:#f5d982;color:inherit;border-radius:4px;padding:0 3px}
+  .caption{white-space:pre-wrap;background:#f6f0df;border-radius:12px;padding:16px;margin-top:18px}
+  .caption strong{display:block;margin-bottom:5px}
+  .actions{display:grid;gap:10px;margin-top:18px}
+  .action{border:2px solid #887f69;background:#fff;padding:10px 12px;color:var(--ink)}
+  .action.main{background:var(--black);color:#fff;border-color:var(--black)}
+  .reader{position:fixed;inset:0;z-index:10;background:#080808;color:#fff;overflow:auto;padding:20px}
+  .reader-inner{width:min(100%,900px);margin:auto;padding-bottom:60px}
+  .reader .back{position:sticky;top:0;width:100%;border:2px solid var(--gold-light);background:#171717;color:var(--gold-light);border-radius:12px;padding:10px 18px;font-weight:900;cursor:pointer;z-index:2}
+  .reader h2{font-size:clamp(34px,7vw,64px);margin:40px 0 26px}
+  .reader-block{font-size:clamp(30px,6vw,58px);line-height:1.35;padding:28px 0;border-top:2px solid #555}
+  .reader-block small{display:block;color:var(--gold-light);font-size:18px;font-weight:900;margin-bottom:10px}
+  footer{text-align:center;color:#595447;padding:0 18px 30px;font-size:15px}
+  #format-choices{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (min-width:650px){.columns{grid-template-columns:1fr 1fr}.benefits{grid-template-columns:repeat(3,1fr)}.choices.three{grid-template-columns:repeat(3,1fr)}.choices.two{grid-template-columns:repeat(2,1fr)}#format-choices{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.actions .main{grid-column:1/-1}}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spinner{animation-duration:1.8s}}
+</style>
+</head>
+<body>
+<header><div class="brand">JR360 <span>Multiplicador de Reels</span></div></header>
+<main>
+  <section class="panel" id="screen-entry">
+    <h1>Haz videos que la gente vea completos, comparta y te compre</h1>
+    <p class="subtitle">Pega un video que funcionó. Te decimos por qué funciona y te damos 3 guiones para lo tuyo, listos para grabar hoy.</p>
+    <ul class="benefits">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h16M6 17l4-4 3 3 5-7"/><path d="M14 9h4v4"/></svg><span>Sabes qué grabar y por qué</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l2.2 4.5L19 9l-3.5 3.4.8 4.8L12 15l-4.3 2.2.8-4.8L5 9l4.8-1.5L12 3z"/></svg><span>Aprendes la técnica que Instagram premia hoy</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Puedes grabar sin mostrar tu cara</span></li>
+    </ul>
+    <label for="video-url">Link de Instagram, TikTok, YouTube o Facebook</label>
+    <input id="video-url" type="url" inputmode="url" autocomplete="url" placeholder="Pega el link aquí">
+    <div id="upload-area" class="hidden">
+      <label class="upload-box" id="video-label" for="video-file">Seleccionar video (máximo 40 MB)
+        <input id="video-file" type="file" accept="video/mp4,video/quicktime,video/webm">
+      </label>
+    </div>
+    <button class="primary" id="analyze-button" type="button">Analizar este video</button>
+    <button class="link-button" id="show-upload" type="button">¿No tienes el link? Sube el video</button>
+    <details class="quick-guide">
+      <summary>¿Cómo copio el link?</summary>
+      <p>En Instagram: toca los tres puntos (···) del video y elige Copiar enlace. En TikTok: toca Compartir y elige Copiar enlace.</p>
+    </details>
+    <button class="secondary hidden" id="example-button" type="button">Ver un ejemplo</button>
+    <p class="tip">Graba tú el video: Instagram muestra menos los videos reciclados o copiados.</p>
+    <p class="privacy">Tu video lo analiza Google Gemini y lo borramos al terminar. Google puede usar el contenido para mejorar sus modelos. Sube solo videos que tengas derecho a usar.</p>
+  </section>
+
+  <section class="panel wait hidden" id="screen-wait" aria-live="polite">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="progress-text">Preparando el análisis…</p>
+    <small>Esto puede tardar varios minutos. No cierres esta página.</small>
+  </section>
+
+  <section class="panel hidden" id="screen-error" role="alert">
+    <div class="error-box" id="error-text"></div>
+    <button class="secondary" id="retry-button" type="button">Intentar de nuevo</button>
+  </section>
+
+  <section class="panel hidden" id="screen-result">
+    <div id="diagnosis"></div>
+    <button class="secondary" id="add-insights" type="button">Añadir estadísticas y mejorar el diagnóstico</button>
+    <input class="hidden" id="insights-file" type="file" accept="image/jpeg,image/png,image/webp">
+    <details>
+      <summary>Ver cómo está armado, escena por escena</summary>
+      <div id="dna-scenes"></div>
+    </details>
+    <div class="adapt">
+      <h2>Prepara tu versión</h2>
+      <p class="field-label">¿Para qué es tu video?</p>
+      <div class="choices two" id="goal-choices">
+        <button class="choice" type="button" data-value="sell_product">Vender un producto</button>
+        <button class="choice" type="button" data-value="sell_service">Ofrecer un servicio</button>
+        <button class="choice" type="button" data-value="grow">Ganar seguidores</button>
+        <button class="choice" type="button" data-value="personal_brand">Mi marca personal</button>
+      </div>
+      <p class="field-error hidden" id="goal-error">Elige para qué es tu video antes de continuar.</p>
+
+      <label for="business-topic" id="topic-label">¿De qué trata tu cuenta?</label>
+      <input id="business-topic" type="text" placeholder="Ejemplo: recetas saludables, consejos para abuelas" autocomplete="off" required>
+      <p class="field-error hidden" id="topic-error">Escribe el tema antes de continuar.</p>
+
+      <p class="field-label">¿Cómo quieres aparecer?</p>
+      <div class="choices" id="format-choices">
+        <button class="choice selected" type="button" data-value="face">Con mi cara</button>
+        <button class="choice" type="button" data-value="hands">Solo mis manos y el producto</button>
+        <button class="choice" type="button" data-value="voiceover">Voz en off</button>
+        <button class="choice" type="button" data-value="text_only">Solo texto</button>
+      </div>
+      <p class="field-label">¿Dónde grabas?</p>
+      <div class="choices three" id="setting-choices">
+        <button class="choice selected" type="button" data-value="home">Mi casa</button>
+        <button class="choice" type="button" data-value="business">Mi tienda o lugar de trabajo</button>
+        <button class="choice" type="button" data-value="same">Igual que el original</button>
+      </div>
+      <p class="field-label">¿Cuántas versiones quieres?</p>
+      <div class="choices two" id="version-choices">
+        <button class="choice selected" type="button" data-value="3">3 versiones</button>
+        <button class="choice" type="button" data-value="6">6 versiones</button>
+      </div>
+      <button class="primary" id="multiply-button" type="button">Crear mis 3 guiones</button>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="screen-scripts"></section>
+</main>
+
+<section class="reader hidden" id="reader" aria-modal="true" role="dialog" aria-labelledby="reader-title">
+  <div class="reader-inner"><button class="back" id="reader-back" type="button">Volver</button><div id="reader-content"></div></div>
+</section>
+<footer>© JR360 IA Agency</footer>
+
+<script>
+const API_BASE = "https://jr360iaagency-n8n.rjyuex.easypanel.host/webhook/v1";
+const EJEMPLO = {"analysis": {"traffic_light": "potential", "confidence": "low", "label": "Potencial observado", "score": 48, "criterion": "Estimación por la estructura del video: no tenemos datos de alcance. Sube la foto de tus estadísticas para medir resultados reales.", "reasons": ["La comparación entre dos casos opuestos facilita entender el valor del servicio.", "El llamado final a la acción con una palabra específica es claro y fácil de responder."], "gaps": ["El inicio es lento y no promete una solución rápida en los primeros segundos.", "El video es demasiado largo para el formato y se apoya en imágenes poco auténticas."]}, "dna": {"schema_version": "1.0", "duration_seconds": 120, "language": "es", "summary": "El autor relata la historia comparativa de dos empresarios: uno que adoptó inteligencia artificial y redujo costos con más tiempo libre, frente a otro saturado de gastos. Finaliza invitando a comentar para recibir una auditoría.", "hook": {"end_second": 3, "spoken": "Hoy tuve la oportunidad de reunirme con Carlos y Esteban.", "on_screen": "HOY", "visual": "Hombre con gorra y lentes hablando en modo selfie en un patio."}, "structure": [{"start": 0, "end": 5.5, "role": "hook", "visual": "Hombre hablando a cámara con texto 'HOY' arriba.", "shot": "primer plano", "spoken": "Hoy tuve la oportunidad de reunirme con Carlos y Esteban. Carlos lleva más de un año aplicando la inteligencia artificial,", "on_screen": "HOY", "edit": "Corte inicial en selfie con subtítulos animados."}, {"start": 5.5, "end": 10.5, "role": "context", "visual": "Imagen de apoyo de un profesional frente a pantallas con gráficos.", "shot": "plano medio", "spoken": "automatizando cada uno de sus sistemas y haciéndolo subir al siguiente nivel.", "on_screen": null, "edit": "Inserción de imagen gráfica de apoyo a pantalla completa."}, {"start": 10.5, "end": 18.5, "role": "context", "visual": "Hombre hablando a cámara en el patio.", "shot": "primer plano", "spoken": "Esteban, pues él no ha podido, está muy ocupado y no ha hecho nada.", "on_screen": null, "edit": "Corte de regreso al presentador."}, {"start": 18.5, "end": 27.5, "role": "development", "visual": "Presentador hablando en otro ángulo exterior junto a una piscina y palmeras.", "shot": "primer plano", "spoken": "Ambos tuvieron casi que las mismas ventas del año pasado. Carlos este año ha triplicado las ventas,", "on_screen": null, "edit": "Cambio de locación visual."}, {"start": 27.5, "end": 30.5, "role": "development", "visual": "Gráfico azul con círculo central indicando '3x'.", "shot": "gráfico", "spoken": "Esteban también las ha triplicado,", "on_screen": "3x", "edit": "Corte a placa gráfica animada."}, {"start": 30.5, "end": 50.5, "role": "development", "visual": "Presentador explicando con apoyo visual inferior de hombre con computadora.", "shot": "primer plano con ventana gráfica", "spoken": "pero la diferencia entre uno y el otro es que Carlos gasta menos dinero para poder producir más, y a Esteban le toca gastar más dinero y su margen de utilidad es un poco menor debido a que le tocó contratar más personas para poder cubrir la demanda, mientras que Carlos simplemente con las automatizaciones", "on_screen": null, "edit": "Corte e inserción de imagen de apoyo circular."}, {"start": 50.5, "end": 54.5, "role": "development", "visual": "Ventana gráfica de mujer frente a pantalla de métricas sobre la toma del orador.", "shot": "primer plano con ventana gráfica", "spoken": "no fue necesario contratar varias personas, simplemente potenció las que ya tenía", "on_screen": null, "edit": "Inserción de gráfico semicircular."}, {"start": 54.5, "end": 102.5, "role": "development", "visual": "Presentador detallando los días de vacaciones con corte a imagen de familia en playa.", "shot": "primer plano con inserción", "spoken": "y la automatización hizo el resto. La otra diferencia es que Carlos duró 15 días de vacaciones con su familia, mientras que Esteban 3 días.", "on_screen": null, "edit": "Corte e imagen de familia en la playa."}, {"start": 102.5, "end": 111.5, "role": "turn", "visual": "Placa gris con círculo central mostrando al orador y texto 'SENCILLO LA IA ME AYUDA'.", "shot": "gráfico centrado", "spoken": "Entonces Esteban le pregunta a Carlos cómo lo hace, y él dijo: 'Sencillo, la IA me ayuda'.", "on_screen": "SENCILLO LA IA ME AYUDA", "edit": "Corte a placa gráfica con máscara circular."}, {"start": 111.5, "end": 141, "role": "reframe", "visual": "Presentador reflexionando en exteriores con inserción gráfica intermedia sobre el comercio.", "shot": "primer plano", "spoken": "Entonces el problema no es que tengas ventas, el problema es que no sabes cómo controlarlo, y la automatización es la inteligencia artificial te ayuda a poder controlarlo. Y esto me lleva a la siguiente reflexión: ¿de qué lado de la mesa te encuentras tú? ¿En la correcta o en la incorrecta? Porque Esteban definitivamente está en el lado incorrecto. La IA no vino a sustituir a las personas, la IA vino a mejorar las empresas, vino a mejorar al comerciante, vino a mejorar al emprendedor.", "on_screen": null, "edit": "Corte de plano y placa azul intermedia."}, {"start": 141, "end": 160, "role": "cta", "visual": "Presentador señalando a la pantalla y mostrando animación de teclado de teléfono.", "shot": "primer plano", "spoken": "Soy Jimmy Rengifo, contador público. Con inteligencia artificial te hago un diagnóstico, descubro tu fuga y te la soluciono. Escribe 'fuga' aquí y te mando mi agente para que analice tu caso y determine cuánto dinero estás perdiendo al mes. Es gratis. Escribe 'fuga'. Bye.", "on_screen": "fuga", "edit": "Corte a animación de chat y llamado final a la acción."}], "turn": {"second": 107, "description": "Revela la clave del contraste entre ambos casos: el uso de automatización con inteligencia artificial."}, "cta": {"start_second": 149, "type": "comment", "text": "Escribe 'fuga' aquí y te mando mi agente para que analice tu caso."}, "pacing": {"cuts": 11, "cuts_per_10s": 0.92}, "transcript": [{"start": 0, "end": 5.5, "text": "Hoy tuve la oportunidad de reunirme con Carlos y Esteban. Carlos lleva más de un año aplicando la inteligencia artificial,"}, {"start": 5.5, "end": 10.5, "text": "automatizando cada uno de sus sistemas y haciéndolo subir al siguiente nivel."}, {"start": 10.5, "end": 18.5, "text": "Esteban, pues él no ha podido, está muy ocupado y no ha hecho nada."}, {"start": 18.5, "end": 27.5, "text": "Ambos tuvieron casi que las mismas ventas del año pasado. Carlos este año ha triplicado las ventas,"}, {"start": 27.5, "end": 34, "text": "Esteban también las ha triplicado, pero la diferencia entre uno y el otro"}, {"start": 34, "end": 44, "text": "es que Carlos gasta menos dinero para poder producir más, y a Esteban le toca gastar más dinero y su margen de utilidad es un poco menor"}, {"start": 44, "end": 54, "text": "debido a que le tocó contratar más personas para poder cubrir la demanda, mientras que Carlos simplemente con las automatizaciones no fue necesario contratar varias personas,"}, {"start": 54, "end": 62, "text": "simplemente potenció las que ya tenía y la automatización hizo el resto."}, {"start": 62, "end": 106, "text": "La otra diferencia es que Carlos duró 15 días de vacaciones con su familia, mientras que Esteban 3 días."}, {"start": 106, "end": 112, "text": "Entonces Esteban le pregunta a Carlos cómo lo hace, y él dijo: 'Sencillo, la IA me ayuda'."}, {"start": 112, "end": 125, "text": "Entonces el problema no es que tengas ventas, el problema es que no sabes cómo controlarlo, y la automatización es la inteligencia artificial te ayuda a poder controlarlo."}, {"start": 125, "end": 141, "text": "Y esto me lleva a la siguiente reflexión: ¿de qué lado de la mesa te encuentras tú? ¿En la correcta o en la incorrecta? Porque Esteban definitivamente está en el lado incorrecto. La IA no vino a sustituir a las personas, la IA vino a mejorar las empresas, vino a mejorar al comerciante, vino a mejorar al emprendedor."}, {"start": 141, "end": 160, "text": "Soy Jimmy Rengifo, contador público. Con inteligencia artificial te hago un diagnóstico, descubro tu fuga y te la soluciono. Escribe 'fuga' aquí y te mando mi agente para que analice tu caso y determine cuánto dinero estás perdiendo al mes. Es gratis. Escribe 'fuga'. Bye."}], "evidence_notes": ["Interacciones registradas: 50 me gusta y 7 comentarios.", "El video dura dos minutos completos con narración en primera persona e inserciones gráficas."], "insights_read": {"shares": null, "saves": null, "average_watch_seconds": null, "completion_rate": null}, "signals": {"hook": {"score": 4, "fix": "Empieza con el beneficio directo o la pérdida de dinero antes del segundo tres en lugar de decir 'Hoy me reuní con...'."}, "proof": {"score": 5, "fix": "Muestra números reales de ahorro o capturas del sistema en vez de solo fotos genéricas de archivo."}, "pacing": {"score": 4, "fix": "Recorta la narración a menos de 60 segundos eliminando pausas y repeticiones del relato."}, "shareability": {"score": 4, "fix": "Añade un consejo práctico inmediato que la persona pueda aplicar o compartir con su socio hoy mismo."}, "cta": {"score": 7, "fix": "Mantén la palabra clave clara pero adelanta el llamado a la acción para que no quede al final de dos minutos."}}, "model_assessment": {"strengths": ["La comparación entre dos casos opuestos facilita entender el valor del servicio.", "El llamado final a la acción con una palabra específica es claro y fácil de responder."], "gaps": ["El inicio es lento y no promete una solución rápida en los primeros segundos.", "El video es demasiado largo para el formato y se apoya en imágenes poco auténticas."], "execution_score": 48}}, "versions": [{"id": "v1_error_comparacion", "angle": "Comparación entre una crema ligera común y una crema nutritiva densa para la noche", "hook": "El error de usar cremas ligeras de día cuando tu piel necesita nutrición profunda de noche", "technique": "Demostración comparativa en manos", "hook_type": "error_comun", "why_it_works": "Muestra la diferencia física de texturas en los primeros segundos, reteniendo a quien siente su piel seca al despertar y facilitando la decisión de compra.", "share_trigger": "Se lo envían a amigas o familiares que siempre se quejan de levantarse con la cara tirante o reseca.", "save_trigger": "Guardan el video para recordar cómo revisar la consistencia y los ingredientes antes de comprar una crema.", "script": [{"start": 0, "end": 4, "voice": "Si te despiertas con la piel tirante, estás cometiendo este error con tu crema.", "on_screen": "Tu crema de noche no hidrata bien"}, {"start": 4, "end": 9, "voice": "Muchas cremas comunes tienen demasiada agua y se evaporan a las dos horas de dormir.", "on_screen": "Se evapora mientras duermes"}, {"start": 9, "end": 15, "voice": "Mira esta crema común: se siente fresca al inicio, pero desaparece sin dejar una barrera real.", "on_screen": "Crema común: poca nutrición"}, {"start": 15, "end": 22, "voice": "En cambio, una fórmula diseñada para piel madura como [nombre de tu crema] tiene otra densidad.", "on_screen": "Fórmula rica para piel madura"}, {"start": 22, "end": 29, "voice": "Al aplicarla, notas de inmediato cómo sella la humedad gracias a [tu ingrediente clave].", "on_screen": "Sella la hidratación profunda"}, {"start": 29, "end": 37, "voice": "No deja sensación grasosa, pero crea un manto protector que trabaja durante toda la noche.", "on_screen": "Nutre sin dejar brillo grasoso"}, {"start": 37, "end": 44, "voice": "Al despertar, la piel se siente suave, elástica y descansada, no acartonada.", "on_screen": "Piel suave y flexible al despertar"}, {"start": 44, "end": 52, "voice": "Esto le sirve a cualquiera que sienta que sus cremas de siempre ya no le hacen nada.", "on_screen": "Comparte con quien use crema"}, {"start": 52, "end": 60, "voice": "Escríbeme NOCHE por mensaje directo y te paso el precio y cómo pedir la tuya hoy mismo.", "on_screen": "Escribe NOCHE por mensaje privado"}], "shooting_plan": [{"start": 0, "end": 4, "location": "Mesa de tocador en casa con luz natural frontal", "shot": "Plano cenital, celular apuntando verticalmente hacia la mesa", "action": "Coloca las dos manos sobre la mesa mostrando los dos frascos cerrados.", "on_screen": "Tu crema de noche no hidrata bien"}, {"start": 4, "end": 9, "location": "Mesa de tocador en casa", "shot": "Plano detalle de las manos", "action": "Abre el frasco de crema ligera y toma una gota pequeña.", "on_screen": "Se evapora mientras duermes"}, {"start": 9, "end": 15, "location": "Mesa de tocador en casa", "shot": "Plano detalle sobre el dorso de la mano izquierda", "action": "Esparce la crema ligera; se ve acuosa y desaparece rápido.", "on_screen": "Crema común: poca nutrición"}, {"start": 15, "end": 22, "location": "Mesa de tocador en casa", "shot": "Plano detalle cambiando al frasco de [nombre de tu crema]", "action": "Abre el frasco de [nombre de tu crema] y muestra su textura cremosa y firme.", "on_screen": "Fórmula rica para piel madura"}, {"start": 22, "end": 29, "location": "Mesa de tocador en casa", "shot": "Plano detalle sobre el dorso de la mano derecha", "action": "Aplica una porción de [nombre de tu crema] y realiza un masaje circular suave.", "on_screen": "Sella la hidratación profunda"}, {"start": 29, "end": 37, "location": "Mesa de tocador en casa", "shot": "Plano cerrado inclinando la mano hacia la luz", "action": "Muestra el acabado hidratado y aterciopelado de la piel.", "on_screen": "Nutre sin dejar brillo grasoso"}, {"start": 37, "end": 44, "location": "Mesa de tocador en casa", "shot": "Plano comparativo con ambas manos juntas", "action": "Pone ambas manos lado a lado para contrastar la mano opaca contra la mano nutrida.", "on_screen": "Piel suave y flexible al despertar"}, {"start": 44, "end": 52, "location": "Mesa de tocador en casa", "shot": "Plano medio de las manos sosteniendo el frasco principal", "action": "Sostiene el envase de [nombre de tu crema] con ambas manos en el centro.", "on_screen": "Comparte con quien use crema"}, {"start": 52, "end": 60, "location": "Mesa de tocador en casa", "shot": "Plano detalle del producto con fondo limpio", "action": "Muestra la tapa y etiqueta del producto señalando con un dedo.", "on_screen": "Escribe NOCHE por mensaje privado"}], "caption": "¿Te levantas con la piel tirante y sientes que tu crema no dura nada? La piel madura necesita retener humedad durante las horas de sueño. Escríbeme NOCHE por mensaje directo y te envío toda la información y el precio de [nombre de tu crema]. #CuidadoDeLaPiel #PielMadura #RutinaNocturna #HidratacionFacial"}, {"id": "v2_prueba_absorcion", "angle": "Demostración de absorción y suavidad inmediata sin sensación pesada", "hook": "La prueba rápida para saber si tu crema nutre de verdad o solo se queda en la superficie", "technique": "Prueba del resultado y textura", "hook_type": "resultado_visible_ya", "why_it_works": "La prueba visual con la textura engancha de inmediato porque resuelve el mayor temor de las personas: las cremas grasosas y pesadas.", "share_trigger": "Se lo mandan a personas que evitan ponerse crema de noche porque les molesta manchar la almohada.", "save_trigger": "Guardan la técnica de aplicación nocturna para replicarla en su rutina diaria.", "script": [{"start": 0, "end": 4, "voice": "Mira lo que pasa cuando aplicas una crema con verdadera nutrición nocturna.", "on_screen": "Así debe absorber tu crema nocturna"}, {"start": 4, "end": 10, "voice": "Muchas personas dejan de cuidarse de noche porque odian la sensación pegajosa en la almohada.", "on_screen": "Cero sensación grasosa o pegajosa"}, {"start": 10, "end": 17, "voice": "Tomamos solo esta cantidad de [nombre de tu crema]. La textura es densa pero suave.", "on_screen": "Solo necesitas una pequeña porción"}, {"start": 17, "end": 24, "voice": "Al masajear sobre la piel limpia, se funde en menos de treinta segundos.", "on_screen": "Se funde rápido en la piel"}, {"start": 24, "end": 31, "voice": "Nota cómo la piel absorbe los nutrientes de [tu ingrediente clave] sin dejar brillo aceitoso.", "on_screen": "Nutrición con [tu ingrediente clave]"}, {"start": 31, "end": 39, "voice": "Pasamos un papel suave por encima y mira: queda completamente limpio y seco.", "on_screen": "Prueba del papel: no mancha"}, {"start": 39, "end": 46, "voice": "Toda la hidratación se queda adentro trabajando mientras descansas.", "on_screen": "Hidratación dentro de tu piel"}, {"start": 46, "end": 53, "voice": "Pásale este video a tu amiga o a tu mamá si todavía sufren con cremas pesadas.", "on_screen": "Reenvíalo a quien le sirva"}, {"start": 53, "end": 60, "voice": "Escríbeme la palabra CREMA por privado y te mando el precio especial y el enlace de compra.", "on_screen": "Escribe CREMA y te paso precio"}], "shooting_plan": [{"start": 0, "end": 4, "location": "Mesa iluminada junto a una ventana en casa", "shot": "Plano cerrado a las manos con el frasco abierto", "action": "Toma un poco de crema con la punta de los dedos y muestra la consistencia a cámara.", "on_screen": "Así debe absorber tu crema nocturna"}, {"start": 4, "end": 10, "location": "Mesa iluminada en casa", "shot": "Plano cenital sobre la mesa", "action": "Muestra una funda de almohada limpia al lado del producto.", "on_screen": "Cero sensación grasosa o pegajosa"}, {"start": 10, "end": 17, "location": "Mesa iluminada en casa", "shot": "Plano detalle de la espátula o dedo sacando crema", "action": "Muestra exactamente la cantidad justa sobre el dorso de la mano.", "on_screen": "Solo necesitas una pequeña porción"}, {"start": 17, "end": 24, "location": "Mesa iluminada en casa", "shot": "Plano detalle en ángulo de 45 grados", "action": "Distribuye con movimientos circulares suaves y parejos.", "on_screen": "Se funde rápido en la piel"}, {"start": 24, "end": 31, "location": "Mesa iluminada en casa", "shot": "Primer plano de la piel hidratada bajo buena luz", "action": "Gira la mano despacio para que se aprecie la textura sedosa sin grasa.", "on_screen": "Nutrición con [tu ingrediente clave]"}, {"start": 31, "end": 39, "location": "Mesa iluminada en casa", "shot": "Plano detalle de la prueba", "action": "Presiona un papel tissue sobre la mano y luego lo levanta mostrando que no tiene grasa.", "on_screen": "Prueba del papel: no mancha"}, {"start": 39, "end": 46, "location": "Mesa iluminada en casa", "shot": "Plano medio de las manos acariciando suavemente el dorso tratado", "action": "Pasa los dedos sobre la piel demostrando la suavidad al tacto.", "on_screen": "Hidratación dentro de tu piel"}, {"start": 46, "end": 53, "location": "Mesa iluminada en casa", "shot": "Plano general de la mesa de cuidado facial", "action": "Acomoda el frasco de [nombre de tu crema] junto a una toalla limpia.", "on_screen": "Reenvíalo a quien le sirva"}, {"start": 53, "end": 60, "location": "Mesa iluminada en casa", "shot": "Plano detalle del producto con enfoque nítido", "action": "Toca la tapa del frasco con dos dedos invitando a consultar.", "on_screen": "Escribe CREMA y te paso precio"}], "caption": "Una buena crema de noche debe nutrir profundamente sin dejarte la cara pesada ni manchar tu almohada. Comprueba el cambio con [nombre de tu crema]. Escríbeme CREMA por mensaje directo y te paso todos los detalles y el precio. #PielMadura #CuidadoNocturno #CremaFacial #CosmeticaFacial"}, {"id": "v3_contra_consejo_rutina", "angle": "Simplificar la rutina nocturna: un solo producto completo en lugar de acumular frascos", "hook": "Deja de gastar en cinco frascos distintos si no estás sellando bien la hidratación nocturna", "technique": "Solución a un problema concreto con rutina simple", "hook_type": "contra_consejo", "why_it_works": "Rompe la sobrecarga de pasos complicados y ofrece alivio con una solución práctica y económica que se realiza en un solo paso antes de dormir.", "share_trigger": "Se lo envían a personas que tienen el baño lleno de potes y ya no saben qué ponerse.", "save_trigger": "Guardan la guía de los 3 pasos esenciales para la noche (limpiar, aplicar, masajear).", "script": [{"start": 0, "end": 4, "voice": "Deja de comprar tantos frascos si tu piel sigue sintiéndose seca.", "on_screen": "Deja de usar mil cremas de noche"}, {"start": 4, "end": 10, "voice": "Ponerte cinco capas de productos antes de dormir suele saturar los poros sin nutrir de verdad.", "on_screen": "Menos pasos, mejor resultado"}, {"start": 10, "end": 16, "voice": "Para la piel madura lo que cuenta es un producto concentrado que haga el trabajo completo.", "on_screen": "Un solo producto completo"}, {"start": 16, "end": 23, "voice": "Paso uno: lavas tu rostro con agua tibia. Paso dos: aplicas una capa de [nombre de tu crema].", "on_screen": "Paso 1: limpia | Paso 2: aplica"}, {"start": 23, "end": 30, "voice": "Paso tres: realizas movimientos ascendentes desde el centro hacia afuera con las yemas.", "on_screen": "Paso 3: masaje suave ascendente"}, {"start": 30, "end": 38, "voice": "Esta fórmula reúne [tu beneficio clave] para que no necesites gastar en sueros adicionales.", "on_screen": "Ahorra tiempo y dinero cada noche"}, {"start": 38, "end": 45, "voice": "Tu rutina queda lista en dos minutos y tu piel amanece descansada y luminosa.", "on_screen": "Rutina lista en dos minutos"}, {"start": 45, "end": 52, "voice": "Compártele este video a quien quiera simplificar sus noches sin descuidar su piel.", "on_screen": "Guarda y comparte la rutina"}, {"start": 52, "end": 60, "voice": "Escríbeme la palabra QUIERO por mensaje directo y te paso la información completa y tu precio.", "on_screen": "Escribe QUIERO para más información"}], "shooting_plan": [{"start": 0, "end": 4, "location": "Mesa de baño o tocador con iluminación cálida", "shot": "Plano cenital mostrando varios frascos amontonados", "action": "Las manos apartan hacia un lado tres frascos genéricos y dejan solo uno en el centro.", "on_screen": "Deja de usar mil cremas de noche"}, {"start": 4, "end": 10, "location": "Mesa de tocador", "shot": "Plano medio de las manos organizando el espacio", "action": "Retira el desorden y coloca una toallita de algodón limpia.", "on_screen": "Menos pasos, mejor resultado"}, {"start": 10, "end": 16, "location": "Mesa de tocador", "shot": "Plano detalle centrado en [nombre de tu crema]", "action": "Presenta el envase en el centro de la mesa destapándolo con cuidado.", "on_screen": "Un solo producto completo"}, {"start": 16, "end": 23, "location": "Mesa de tocador", "shot": "Plano detalle de las manos aplicando producto", "action": "Toma una porción y la distribuye entre las yemas de los dedos de ambas manos.", "on_screen": "Paso 1: limpia | Paso 2: aplica"}, {"start": 23, "end": 30, "location": "Mesa de tocador", "shot": "Plano detalle simulando el masaje", "action": "Muestra el movimiento suave y ascendente de las manos sobre el dorso o antebrazo.", "on_screen": "Paso 3: masaje suave ascendente"}, {"start": 30, "end": 38, "location": "Mesa de tocador", "shot": "Plano detalle de la textura sedosa en la piel", "action": "Muestra el acabado hidratado y el brillo saludable de la zona tratada.", "on_screen": "Ahorra tiempo y dinero cada noche"}, {"start": 38, "end": 45, "location": "Mesa de tocador", "shot": "Plano medio con el reloj de mesa o ambiente nocturno", "action": "Cierra el frasco con un movimiento limpio y preciso.", "on_screen": "Rutina lista en dos minutos"}, {"start": 45, "end": 52, "location": "Mesa de tocador", "shot": "Plano detalle del frasco junto a una pequeña planta o vela decorativa", "action": "Acomoda el producto de frente hacia la cámara.", "on_screen": "Guarda y comparte la rutina"}, {"start": 52, "end": 60, "location": "Mesa de tocador", "shot": "Primer plano fijo del producto", "action": "Muestra el frasco con el texto en pantalla invitando a escribir.", "on_screen": "Escribe QUIERO para más información"}], "caption": "No necesitas diez pasos antes de dormir para tener una piel hidratada y cuidada. Con una fórmula concentrada como [nombre de tu crema] ahorras tiempo y dinero. Escríbeme QUIERO por mensaje directo y te paso el precio y las opciones de entrega. #RutinaFacil #PielMadura #CremaDeNoche #CuidadoFacialNatural"}], "topic": "crema hidratante de noche para piel madura"};
+const el = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+const highlightBrackets = value => esc(value).replace(/\[[^\]]+\]/g, match => `<mark>${match}</mark>`);
+// Red de seguridad: si el modelo cuela jerga de cámara o guiones bajos, se traduce a palabras normales.
+const JERGA = [[/plano cenital|cenital/gi,"desde arriba"],[/primer[oa]? plano|plano detalle|plano cerrado|close-?up/gi,"de cerca"],[/plano medio/gi,"a media distancia"],[/plano general/gi,"de lejos"],[/plano/gi,"toma"]];
+const plain = value => JERGA.reduce((t,[re,rep]) => t.replace(re,rep), String(value ?? "")).replace(/_/g," ");
+const screens = ["screen-entry","screen-wait","screen-error","screen-result","screen-scripts"];
+let originalInput = null;
+let lastAnalysis = null;
+let versions = [];
+let previousScreen = "screen-entry";
+const choices = {goal:null,format:"face",setting:"home",versions:3};
+
+function showScreen(id){
+  screens.forEach(screen => el(screen).classList.toggle("hidden",screen !== id));
+  previousScreen = id;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function humanError(data){
+  const code = data?.error?.code || data?.error_code || "";
+  const messages = {
+    TOO_LARGE:"El video pesa demasiado. Prueba con uno de menos de 40 MB.",
+    TOO_LONG:"El video dura demasiado. Prueba con uno más corto.",
+    QUOTA_EXHAUSTED:"Llegamos al límite de análisis de hoy. Intenta mañana.",
+    INVALID_MEDIA:"No pudimos leer ese archivo. Prueba con otro video o link."
+  };
+  return messages[code] || data?.error?.message || "Algo falló. Revisa el link o el archivo e intenta de nuevo.";
+}
+
+function showError(message){
+  el("error-text").textContent = message;
+  showScreen("screen-error");
+}
+
+function validateFile(file,maxMb,types,label){
+  if(!file) return true;
+  if(file.size > maxMb * 1024 * 1024){showError(`${label} pesa demasiado. El máximo es ${maxMb} MB.`);return false;}
+  if(!types.includes(file.type)){showError(`${label} no tiene un formato compatible.`);return false;}
+  return true;
+}
+
+const STATUS_TEXT = {
+  queued:"Tu video está en espera…",downloading:"Descargando el video…",
+  processing:"Preparando el video…",analyzing:"Analizando cómo está construido…"
+};
+
+async function esperarJob(pollUrl){
+  const deadline = Date.now() + 9 * 60 * 1000;
+  const pause = ms => new Promise(resolve => setTimeout(resolve,ms));
+  while(Date.now() < deadline){
+    let data;
+    try{
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(),20000);
+      try{
+        const response = await fetch(API_BASE + pollUrl,{signal:controller.signal});
+        data = await response.json();
+      } finally { clearTimeout(timeout); }
+    } catch(error){
+      await pause(5000);
+      continue;
+    }
+    if(data?.error?.code === "JOB_NOT_FOUND"){await pause(5000);continue;}
+    if(data.status === "completed" || data.status === "needs_upload") return data;
+    if(data.status === "failed" || data.ok === false) throw new Error(humanError(data));
+    if(STATUS_TEXT[data.status]) el("progress-text").textContent = STATUS_TEXT[data.status];
+    await pause((Number(data.retry_after_seconds) || 3) * 1000);
+  }
+  throw new Error("El análisis está tardando más de lo normal. Intenta de nuevo en unos minutos.");
+}
+
+function analysisBody(insights){
+  if(insights || originalInput.type === "file"){
+    const form = new FormData();
+    if(originalInput.type === "file") form.append("video",originalInput.file);
+    else form.append("instagram_url",originalInput.url);
+    if(insights) form.append("insights",insights);
+    return {body:form,headers:{}};
+  }
+  return {body:JSON.stringify({source:{type:"instagram_url",url:originalInput.url}}),headers:{"Content-Type":"application/json"}};
+}
+
+async function runAnalysis(insights=null){
+  if(insights && !validateFile(insights,8,["image/jpeg","image/png","image/webp"],"La captura")) return;
+  showScreen("screen-wait");
+  el("progress-text").textContent = originalInput.type === "file" ? "Subiendo tu video…" : "Descargando el video…";
+  try{
+    const request = analysisBody(insights);
+    const response = await fetch(API_BASE + "/analizar",{method:"POST",headers:request.headers,body:request.body});
+    const started = await response.json();
+    if(!response.ok || started.ok === false || !started.poll_url) throw new Error(humanError(started));
+    const result = await esperarJob(started.poll_url);
+    if(result.status === "needs_upload"){
+      showScreen("screen-entry");
+      el("upload-area").classList.remove("hidden");
+      el("video-url").value = originalInput.type === "url" ? originalInput.url : "";
+      showError(result.upload_reason || "No pudimos abrir ese link. Sube el video desde tu teléfono.");
+      return;
+    }
+    lastAnalysis = {analysis_id:result.job_id,dna:result.dna,original_verdict:result.analysis};
+    paintResult(result);
+    showScreen("screen-result");
+  } catch(error){showError(error.message || "Algo falló. Intenta de nuevo.");}
+}
+
+function listHtml(items,emptyText){
+  const safeItems = Array.isArray(items) ? items : [];
+  return safeItems.length ? `<ul>${safeItems.map(item => `<li>${esc(item)}</li>`).join("")}</ul>` : `<p>${esc(emptyText)}</p>`;
+}
+
+const SIGNAL_LABELS = {
+  hook:"Gancho del primer segundo",
+  proof:"Demuestra lo que promete",
+  pacing:"Ritmo: no aburre",
+  shareability:"Se comparte o se guarda",
+  cta:"Dice qué hacer al final"
+};
+const SIGNAL_FALLBACKS = {proof:"product_proof",cta:"sales_cta"};
+
+function signalsHtml(signals){
+  if(!signals || typeof signals !== "object") return "";
+  const rows = Object.entries(SIGNAL_LABELS);
+  return `<section class="scorecard" aria-labelledby="scorecard-title">
+    <h3 id="scorecard-title">Boleta del video</h3>
+    ${rows.map(([key,label]) => {
+      const fallbackKey = SIGNAL_FALLBACKS[key];
+      const candidate = signals[key] || (fallbackKey ? signals[fallbackKey] : null);
+      const signal = candidate && typeof candidate === "object" ? candidate : {};
+      const rawScore = Number(signal.score);
+      const score = Number.isFinite(rawScore) ? Math.max(0,Math.min(10,rawScore)) : 0;
+      const color = score >= 7 ? "green" : score >= 4 ? "amber" : "red";
+      return `<div class="signal">
+        <div class="signal-head"><span>${esc(label)}</span><span class="signal-score">${esc(score)}/10</span></div>
+        <div class="score-track" role="meter" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${esc(score)}"><span class="score-fill ${color}" style="width:${score*10}%"></span></div>
+        <p class="signal-fix"><strong>Qué cambiar:</strong> ${esc(signal.fix || "No indicado")}</p>
+      </div>`;
+    }).join("")}
+  </section>`;
+}
+
+function paintResult(result){
+  const analysis = result.analysis || {};
+  const traffic = ["viral","potential","low"].includes(analysis.traffic_light) ? analysis.traffic_light : "potential";
+  const color = {viral:"green",potential:"amber",low:"red"}[traffic];
+  const strength = {viral:"fuerte",potential:"mejorable",low:"débil"}[traffic];
+  const lowConfidence = analysis.confidence === "low";
+  const heading = lowConfidence ? `Estructura: ${strength}` : `Potencial observado: ${analysis.score ?? "—"}/100`;
+  const explanation = lowConfidence
+    ? "Evaluamos cómo está construido. No podemos medir su rendimiento real sin las estadísticas del video."
+    : (analysis.criterion || "Diagnóstico basado en la estructura y las estadísticas disponibles.");
+  el("diagnosis").innerHTML = `
+    <div class="verdict"><span class="light ${color}" aria-hidden="true"></span><div class="verdict-text">${esc(heading)}</div></div>
+    <p class="criterion">${esc(explanation)}</p>
+    ${signalsHtml(result.dna?.signals)}
+    <div class="columns">
+      <div class="fact"><h3>Qué lo hizo funcionar</h3>${listHtml(analysis.reasons,"No encontramos fortalezas claras.")}</div>
+      <div class="fact"><h3>Qué le faltó</h3>${listHtml(analysis.gaps,"No encontramos faltantes importantes.")}</div>
+    </div>`;
+  el("dna-scenes").innerHTML = (result.dna?.structure || []).map(scene => `
+    <div class="scene"><div class="time">${esc(scene.start)}s – ${esc(scene.end)}s</div><dl>
+      <dt>Cómo se grabó</dt><dd>${esc(plain(scene.shot) || "No indicado")}</dd>
+      <dt>Qué se ve</dt><dd>${esc(scene.visual || scene.role || "No indicado")}</dd>
+      <dt>Qué se dice</dt><dd>${esc(scene.spoken || "Sin voz")}</dd>
+      <dt>Texto en pantalla</dt><dd>${esc(scene.on_screen || "Sin texto")}</dd>
+      <dt>Edición</dt><dd>${esc(scene.edit || "No indicada")}</dd>
+    </dl></div>`).join("") || "<p>No recibimos el detalle de las escenas.</p>";
+}
+
+function setChoice(groupId,key){
+  el(groupId).addEventListener("click",event => {
+    const button = event.target.closest("button[data-value]");
+    if(!button) return;
+    el(groupId).querySelectorAll("button").forEach(item => item.classList.toggle("selected",item === button));
+    choices[key] = key === "versions" ? Number(button.dataset.value) : button.dataset.value;
+    if(key === "versions") el("multiply-button").textContent = `Crear mis ${choices.versions} guiones`;
+    if(key === "goal"){
+      el("goal-error").classList.add("hidden");
+      const topicCopy = {
+        sell_product:["¿Qué producto vendes?","Ejemplo: crema de noche, perfumes, ropa","Escribe el producto antes de continuar."],
+        sell_service:["¿Qué servicio ofreces?","Ejemplo: clases de cocina, seguros, peluquería","Escribe el servicio antes de continuar."],
+        grow:["¿De qué trata tu cuenta?","Ejemplo: recetas saludables, consejos para abuelas","Escribe el tema antes de continuar."],
+        personal_brand:["¿De qué trata tu cuenta?","Ejemplo: recetas saludables, consejos para abuelas","Escribe el tema antes de continuar."]
+      }[choices.goal];
+      el("topic-label").textContent = topicCopy[0];
+      el("business-topic").placeholder = topicCopy[1];
+      el("topic-error").textContent = topicCopy[2];
+    }
+  });
+}
+
+function mergedScenes(version){
+  const scripts = Array.isArray(version.script) ? version.script : [];
+  const plans = Array.isArray(version.shooting_plan) ? version.shooting_plan : [];
+  const used = new Set();
+  const rows = scripts.map((script,index) => {
+    let planIndex = plans.findIndex((plan,i) => !used.has(i) && String(plan.start) === String(script.start) && String(plan.end) === String(script.end));
+    if(planIndex < 0 && plans[index]) planIndex = index;
+    if(planIndex >= 0) used.add(planIndex);
+    return {...(plans[planIndex] || {}),...script};
+  });
+  plans.forEach((plan,index) => {if(!used.has(index)) rows.push(plan);});
+  return rows;
+}
+
+function scenesHtml(version){
+  return mergedScenes(version).map(scene => `
+    <div class="scene"><div class="time">${esc(scene.start)}s – ${esc(scene.end)}s</div><dl>
+      <dt>Qué dices</dt><dd>${highlightBrackets(scene.voice || "(sin voz, solo texto)")}</dd>
+      <dt>Qué haces</dt><dd>${highlightBrackets(scene.action || "No indicado")}</dd>
+      <dt>Qué aparece en pantalla</dt><dd>${highlightBrackets(scene.on_screen || "Sin texto")}</dd>
+      <dt>Dónde colocas el teléfono</dt><dd>${highlightBrackets([plain(scene.shot),scene.location].filter(Boolean).join(" · ") || "No indicado")}</dd>
+    </dl></div>`).join("");
+}
+
+function paintScripts(items){
+  versions = items;
+  el("screen-scripts").innerHTML = `<h2>Tus guiones, para grabar hoy</h2>
+    <p class="script-note">Completa lo que está entre corchetes con tus datos reales.</p>${items.map((version,index) => `
+    <article class="script-card">
+      <div class="tags"><span class="tag">Técnica: ${highlightBrackets(version.technique || "No indicada")}</span><span class="tag">Gancho: ${highlightBrackets(plain(version.hook_type) || "No indicado")}</span></div>
+      <span class="angle">Versión ${index+1}: ${highlightBrackets(version.angle || "Nuevo ángulo")}</span>
+      <p class="hook">${highlightBrackets(version.hook || "")}</p>
+      <div class="why"><strong>Por qué funciona</strong><p>${highlightBrackets(version.why_it_works || "No indicado")}</p><p><strong>Se lo mandarían a:</strong> ${highlightBrackets(version.share_trigger || "No indicado")}</p><p><strong>Lo guardarían porque:</strong> ${highlightBrackets(version.save_trigger || "No indicado")}</p></div>
+      ${scenesHtml(version)}
+      <div class="caption"><strong>Texto para publicar</strong>${highlightBrackets(version.caption || "")}</div>
+      <div class="actions">
+        <button class="action main" type="button" data-action="read" data-index="${index}">Usar este guion</button>
+        <button class="action" type="button" data-action="listen" data-index="${index}">Escucharlo</button>
+        <button class="action" type="button" data-action="copy" data-index="${index}">Copiar guion</button>
+        <button class="action" type="button" data-action="whatsapp" data-index="${index}">Abrir en WhatsApp</button>
+      </div>
+    </article>`).join("")}<button class="secondary" type="button" id="restart-button">Analizar otro video</button>`;
+}
+
+function plainScript(version){
+  const body = mergedScenes(version).map(scene => `${scene.start}s–${scene.end}s\nQué dices: ${scene.voice || "(sin voz, solo texto)"}\nQué haces: ${scene.action || "No indicado"}\nEn pantalla: ${scene.on_screen || "Sin texto"}\nTeléfono: ${[plain(scene.shot),scene.location].filter(Boolean).join(" · ") || "No indicado"}`).join("\n\n");
+  return `${version.angle || "Guion"}\n${version.hook || ""}\n\n${body}\n\nTexto para publicar:\n${version.caption || ""}`;
+}
+
+function openReader(version){
+  const rows = mergedScenes(version);
+  el("reader-content").innerHTML = `<h2 id="reader-title">${highlightBrackets(version.hook || "Tu guion")}</h2>${rows.map(scene => `<div class="reader-block"><small>${esc(scene.start)}s – ${esc(scene.end)}s</small>${highlightBrackets(scene.voice || scene.on_screen || "(sin voz, solo texto)")}</div>`).join("")}`;
+  el("reader").classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  el("reader-back").focus();
+}
+
+function closeReader(){el("reader").classList.add("hidden");document.body.style.overflow="";}
+
+el("show-upload").addEventListener("click",() => {el("upload-area").classList.remove("hidden");el("video-file").click();});
+if(EJEMPLO) el("example-button").classList.remove("hidden");
+el("example-button").addEventListener("click",() => {
+  if(!EJEMPLO) return;
+  const result = EJEMPLO.result || EJEMPLO;
+  lastAnalysis = {analysis_id:result.job_id || "ejemplo",dna:result.dna,original_verdict:result.analysis};
+  paintResult(result);
+  if(Array.isArray(EJEMPLO.versions || result.versions)){
+    const diagnosisHtml = el("diagnosis").innerHTML.replace('id="scorecard-title"','id="example-scorecard-title"').replace('aria-labelledby="scorecard-title"','aria-labelledby="example-scorecard-title"');
+    paintScripts(EJEMPLO.versions || result.versions);
+    el("screen-scripts").insertAdjacentHTML("afterbegin",`<section><h2>Diagnóstico del ejemplo</h2>${diagnosisHtml}</section>`);
+    showScreen("screen-scripts");
+  } else showScreen("screen-result");
+});
+el("video-file").addEventListener("change",() => {
+  const file = el("video-file").files[0];
+  if(file){el("video-label").classList.add("selected");el("video-label").childNodes[0].nodeValue = `Video seleccionado: ${file.name} `;}
+});
+el("analyze-button").addEventListener("click",() => {
+  const url = el("video-url").value.trim();
+  const file = el("video-file").files[0];
+  if(!url && !file){showError("Pega el link del video o súbelo desde tu teléfono.");return;}
+  if(file && !validateFile(file,40,["video/mp4","video/quicktime","video/webm"],"El video")) return;
+  originalInput = file ? {type:"file",file} : {type:"url",url};
+  runAnalysis();
+});
+el("retry-button").addEventListener("click",() => showScreen(originalInput ? "screen-entry" : previousScreen));
+el("add-insights").addEventListener("click",() => el("insights-file").click());
+el("insights-file").addEventListener("change",() => {const file=el("insights-file").files[0];if(file) runAnalysis(file);});
+el("business-topic").addEventListener("input",() => el("topic-error").classList.add("hidden"));
+setChoice("goal-choices","goal");
+setChoice("format-choices","format");
+setChoice("setting-choices","setting");
+setChoice("version-choices","versions");
+
+el("multiply-button").addEventListener("click",async() => {
+  const topic = el("business-topic").value.trim();
+  if(!choices.goal){el("goal-error").classList.remove("hidden");el("goal-choices").querySelector("button").focus();return;}
+  if(!topic){el("topic-error").classList.remove("hidden");el("business-topic").focus();return;}
+  showScreen("screen-wait");
+  el("progress-text").textContent = "Creando tus guiones…";
+  try{
+    const response = await fetch(API_BASE + "/multiplicar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      analysis_id:lastAnalysis.analysis_id,dna:lastAnalysis.dna,original_verdict:lastAnalysis.original_verdict,
+      choices:{goal:choices.goal,topic,format:choices.format,setting:choices.setting,language:"es",versions:choices.versions},
+      generation:{mode:"new_angles",exclude_angles:[]}
+    })});
+    const data = await response.json();
+    if(!response.ok || data.ok === false) throw new Error(humanError(data));
+    if(!Array.isArray(data.versions)) throw new Error("No pudimos crear los guiones. Intenta de nuevo.");
+    paintScripts(data.versions);
+    showScreen("screen-scripts");
+  } catch(error){showError(error.message || "Algo falló al crear los guiones.");}
+});
+
+el("screen-scripts").addEventListener("click",async event => {
+  if(event.target.id === "restart-button"){location.reload();return;}
+  const button = event.target.closest("button[data-action]");
+  if(!button) return;
+  const version = versions[Number(button.dataset.index)];
+  const text = plainScript(version);
+  if(button.dataset.action === "read") openReader(version);
+  if(button.dataset.action === "listen"){
+    if(!("speechSynthesis" in window)){button.textContent="Tu navegador no puede reproducirlo";return;}
+    const utterance = new SpeechSynthesisUtterance([version.hook,...mergedScenes(version).map(scene => scene.voice).filter(Boolean)].join(". "));
+    // Voz latina si el teléfono la tiene (es-US / es-MX); si no, cualquier español.
+    const voices = speechSynthesis.getVoices();
+    const voice = voices.find(v => /^es-(US|MX|419)/i.test(v.lang)) || voices.find(v => /^es/i.test(v.lang));
+    if(voice) utterance.voice = voice;
+    utterance.lang = voice?.lang || "es-US"; utterance.rate = 0.95;
+    speechSynthesis.cancel(); speechSynthesis.speak(utterance);
+  }
+  if(button.dataset.action === "copy"){
+    try{await navigator.clipboard.writeText(text);button.textContent="Copiado";}catch(error){button.textContent="No se pudo copiar";}
+  }
+  if(button.dataset.action === "whatsapp"){
+    // A WhatsApp va solo lo que se dice + el texto para publicar: el guion completo no cabe en el link.
+    const spoken = mergedScenes(version).map(scene => scene.voice || scene.on_screen).filter(Boolean).join("\n\n");
+    const short = `${version.hook || ""}\n\n${spoken}\n\nTexto para publicar:\n${version.caption || ""}`.trim();
+    const trimmed = short.length > 1800 ? short.slice(0,1799).trimEnd()+"…" : short;
+    window.open(`https://wa.me/?text=${encodeURIComponent(trimmed)}`,"_blank","noopener,noreferrer");
+  }
+});
+el("reader-back").addEventListener("click",closeReader);
+document.addEventListener("keydown",event => {if(event.key === "Escape" && !el("reader").classList.contains("hidden")) closeReader();});
+window.addEventListener("load",() => {if(window.location.hash === "#ejemplo" && EJEMPLO) el("example-button").click();});
+</script>
+</body>
+</html>
