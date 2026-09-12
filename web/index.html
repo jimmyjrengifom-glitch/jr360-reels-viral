@@ -415,13 +415,21 @@ el("screen-scripts").addEventListener("click",async event => {
   if(button.dataset.action === "listen"){
     if(!("speechSynthesis" in window)){button.textContent="Tu navegador no puede reproducirlo";return;}
     const utterance = new SpeechSynthesisUtterance([version.hook,...mergedScenes(version).map(scene => scene.voice).filter(Boolean)].join(". "));
-    utterance.lang="es-ES";speechSynthesis.cancel();speechSynthesis.speak(utterance);
+    // Voz latina si el teléfono la tiene (es-US / es-MX); si no, cualquier español.
+    const voices = speechSynthesis.getVoices();
+    const voice = voices.find(v => /^es-(US|MX|419)/i.test(v.lang)) || voices.find(v => /^es/i.test(v.lang));
+    if(voice) utterance.voice = voice;
+    utterance.lang = voice?.lang || "es-US"; utterance.rate = 0.95;
+    speechSynthesis.cancel(); speechSynthesis.speak(utterance);
   }
   if(button.dataset.action === "copy"){
     try{await navigator.clipboard.writeText(text);button.textContent="Copiado";}catch(error){button.textContent="No se pudo copiar";}
   }
   if(button.dataset.action === "whatsapp"){
-    const trimmed = text.length > 1500 ? text.slice(0,1499).trimEnd()+"…" : text;
+    // A WhatsApp va solo lo que se dice + el texto para publicar: el guion completo no cabe en el link.
+    const spoken = mergedScenes(version).map(scene => scene.voice || scene.on_screen).filter(Boolean).join("\n\n");
+    const short = `${version.hook || ""}\n\n${spoken}\n\nTexto para publicar:\n${version.caption || ""}`.trim();
+    const trimmed = short.length > 1800 ? short.slice(0,1799).trimEnd()+"…" : short;
     window.open(`https://wa.me/?text=${encodeURIComponent(trimmed)}`,"_blank","noopener,noreferrer");
   }
 });
