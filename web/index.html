@@ -271,9 +271,11 @@ el("btn-analizar").addEventListener("click", async () => {
 
   try{
     let body, headers = {};
-    if(archivoVideo){
+    if(archivoVideo || archivoCaptura){
+      // multipart también con link, para que viaje la captura de estadísticas
       body = new FormData();
-      body.append("video", archivoVideo);
+      if(archivoVideo) body.append("video", archivoVideo);
+      else body.append("instagram_url", url);
       if(archivoCaptura) body.append("insights", archivoCaptura);
     } else {
       headers["Content-Type"] = "application/json";
