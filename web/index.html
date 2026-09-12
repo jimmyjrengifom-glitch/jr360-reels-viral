@@ -156,6 +156,7 @@
       <div class="confianza" id="texto-confianza"></div>
     </div>
 
+    <p class="ayuda" id="texto-criterio"></p>
     <h2 id="titulo-razones">Por qué</h2>
     <ul class="razones" id="lista-razones"></ul>
 
@@ -310,7 +311,8 @@ function pintarResultado(r){
   const a = r.analysis;
   const colorLuz = { viral:"verde", potential:"amarillo", low:"rojo" }[a.traffic_light] || "amarillo";
   el("luz-semaforo").className = "luz " + colorLuz;
-  el("texto-veredicto").textContent = a.label || "Estructura analizada";
+  el("texto-veredicto").textContent = (a.label || "Estructura analizada") + (a.score != null ? ` · ${a.score}/100` : "");
+  el("texto-criterio").textContent = a.criterion || "";
   el("texto-confianza").textContent = "confianza " + (a.confidence === "high" ? "alta" : a.confidence === "low" ? "baja" : "media");
 
   el("titulo-razones").textContent = a.traffic_light === "low" ? "Qué le faltó" : "Qué lo hizo funcionar";
