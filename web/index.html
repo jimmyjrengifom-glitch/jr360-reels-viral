@@ -27,6 +27,11 @@
   h3{font-size:22px;line-height:1.25;margin:26px 0 10px}
   p{margin:0 0 18px}
   .subtitle{font-size:21px;color:var(--muted);max-width:620px;margin-bottom:28px}
+  .benefits{display:grid;gap:12px;margin:0 0 28px;padding:0;list-style:none}
+  .benefits li{display:flex;gap:12px;align-items:center;font-weight:800}
+  .benefits svg{width:28px;height:28px;flex:0 0 auto;color:#6d5108}
+  .quick-guide{margin:16px 0 0}
+  .tip{margin:22px 0 0;border-left:5px solid var(--gold);background:#f6f0df;padding:14px 16px;font-weight:800}
   label,.field-label{display:block;font-weight:800;margin:0 0 9px}
   input[type=url],input[type=text]{width:100%;min-height:58px;border:2px solid #aaa18d;border-radius:12px;background:#fff;color:var(--ink);padding:13px 15px;margin:0}
   input::placeholder{color:#726d61}
@@ -60,6 +65,17 @@
   .fact h3{margin:0 0 8px}
   .fact ul{margin:0;padding-left:24px}
   .fact li+li{margin-top:8px}
+  .scorecard{border:1px solid var(--line);border-radius:16px;padding:18px;margin:24px 0;background:#fff}
+  .scorecard h3{margin:0 0 16px}
+  .signal+.signal{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+  .signal-head{display:flex;justify-content:space-between;gap:14px;align-items:baseline;font-weight:900}
+  .signal-score{white-space:nowrap}
+  .score-track{height:13px;background:#e8e2d5;border-radius:999px;overflow:hidden;margin:8px 0 7px}
+  .score-fill{display:block;height:100%;border-radius:inherit}
+  .score-fill.green{background:var(--green)}
+  .score-fill.amber{background:#d18b05}
+  .score-fill.red{background:var(--red)}
+  .signal-fix{font-size:17px;color:var(--muted);margin:0}
   details{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;margin:22px 0}
   summary{cursor:pointer;font-weight:900;color:#4f3a06}
   .scene{border-left:5px solid var(--gold);padding:5px 0 5px 16px;margin:20px 0}
@@ -73,8 +89,15 @@
   .choice.selected{border-color:var(--black);background:var(--black);color:var(--gold-light);box-shadow:inset 0 0 0 2px var(--gold-light)}
   .field-error{color:#9c2018;font-weight:700;font-size:17px;margin:7px 0 0}
   .script-card{border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:22px;background:#fff;box-shadow:0 8px 22px rgba(48,38,12,.07)}
+  .script-note{border-left:5px solid var(--gold);background:#f6f0df;padding:14px 16px;margin-bottom:22px;font-weight:800}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px}
+  .tag{display:inline-block;border:1px solid #a59673;background:#fffaf0;border-radius:999px;padding:5px 11px;font-size:16px;font-weight:800}
   .angle{display:inline-block;background:var(--black);color:var(--gold-light);border-radius:999px;padding:5px 12px;font-size:16px;font-weight:800}
   .hook{font-size:23px;font-weight:900;line-height:1.3;margin:15px 0 22px}
+  .why{border:2px solid #cda53d;background:#fff8e7;border-radius:13px;padding:16px;margin:18px 0}
+  .why strong{display:block;margin-bottom:7px}
+  .why p{margin:5px 0}
+  mark{background:#f5d982;color:inherit;border-radius:4px;padding:0 3px}
   .caption{white-space:pre-wrap;background:#f6f0df;border-radius:12px;padding:16px;margin-top:18px}
   .caption strong{display:block;margin-bottom:5px}
   .actions{display:grid;gap:10px;margin-top:18px}
@@ -87,7 +110,8 @@
   .reader-block{font-size:clamp(30px,6vw,58px);line-height:1.35;padding:28px 0;border-top:2px solid #555}
   .reader-block small{display:block;color:var(--gold-light);font-size:18px;font-weight:900;margin-bottom:10px}
   footer{text-align:center;color:#595447;padding:0 18px 30px;font-size:15px}
-  @media (min-width:650px){.columns{grid-template-columns:1fr 1fr}.choices.three{grid-template-columns:repeat(3,1fr)}.choices.two{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.actions .main{grid-column:1/-1}}
+  #format-choices{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (min-width:650px){.columns{grid-template-columns:1fr 1fr}.benefits{grid-template-columns:repeat(3,1fr)}.choices.three{grid-template-columns:repeat(3,1fr)}.choices.two{grid-template-columns:repeat(2,1fr)}#format-choices{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.actions .main{grid-column:1/-1}}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spinner{animation-duration:1.8s}}
 </style>
 </head>
@@ -95,8 +119,13 @@
 <header><div class="brand">JR360 <span>Multiplicador de Reels</span></div></header>
 <main>
   <section class="panel" id="screen-entry">
-    <h1>Pega aquí el video que quieres adaptar</h1>
-    <p class="subtitle">Analizamos cómo está construido y te preparamos uno para tu negocio.</p>
+    <h1>Vende más con tus videos</h1>
+    <p class="subtitle">Pega un video que funcionó. Te decimos por qué funciona y te damos 3 guiones para tu producto, listos para grabar hoy.</p>
+    <ul class="benefits">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h16M6 17l4-4 3 3 5-7"/><path d="M14 9h4v4"/></svg><span>Sabes qué grabar para vender</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l2.2 4.5L19 9l-3.5 3.4.8 4.8L12 15l-4.3 2.2.8-4.8L5 9l4.8-1.5L12 3z"/></svg><span>Aprendes la técnica que Instagram premia hoy</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Puedes grabar sin mostrar tu cara</span></li>
+    </ul>
     <label for="video-url">Link de Instagram, TikTok, YouTube o Facebook</label>
     <input id="video-url" type="url" inputmode="url" autocomplete="url" placeholder="Pega el link aquí">
     <div id="upload-area" class="hidden">
@@ -106,6 +135,12 @@
     </div>
     <button class="primary" id="analyze-button" type="button">Analizar este video</button>
     <button class="link-button" id="show-upload" type="button">¿No tienes el link? Sube el video</button>
+    <details class="quick-guide">
+      <summary>¿Cómo copio el link?</summary>
+      <p>En Instagram: toca los tres puntos (···) del video y elige Copiar enlace. En TikTok: toca Compartir y elige Copiar enlace.</p>
+    </details>
+    <button class="secondary hidden" id="example-button" type="button">Ver un ejemplo</button>
+    <p class="tip">Graba tú el video: Instagram muestra menos los videos reciclados de la marca.</p>
     <p class="privacy">Tu video lo analiza Google Gemini y lo borramos al terminar. Google puede usar el contenido para mejorar sus modelos. Sube solo videos que tengas derecho a usar.</p>
   </section>
 
@@ -130,21 +165,22 @@
     </details>
     <div class="adapt">
       <h2>Prepara tu versión</h2>
-      <label for="business-topic">¿Para qué negocio quieres adaptar esta estructura?</label>
-      <input id="business-topic" type="text" placeholder="Ejemplo: vendo casas en Orlando" autocomplete="off">
-      <p class="field-error hidden" id="topic-error">Escribe el negocio antes de continuar.</p>
+      <label for="business-topic">¿Qué producto vendes?</label>
+      <input id="business-topic" type="text" placeholder="Ejemplo: crema de noche, labiales, perfumes" autocomplete="off" required>
+      <p class="field-error hidden" id="topic-error">Escribe el producto antes de continuar.</p>
 
       <p class="field-label">¿Cómo quieres aparecer?</p>
-      <div class="choices three" id="format-choices">
+      <div class="choices" id="format-choices">
         <button class="choice selected" type="button" data-value="face">Con mi cara</button>
+        <button class="choice" type="button" data-value="hands">Solo mis manos y el producto</button>
         <button class="choice" type="button" data-value="voiceover">Voz en off</button>
         <button class="choice" type="button" data-value="text_only">Solo texto</button>
       </div>
       <p class="field-label">¿Dónde grabas?</p>
       <div class="choices three" id="setting-choices">
-        <button class="choice selected" type="button" data-value="same">Igual que el original</button>
-        <button class="choice" type="button" data-value="business">Mi negocio</button>
-        <button class="choice" type="button" data-value="home">Mi casa</button>
+        <button class="choice selected" type="button" data-value="home">Mi casa</button>
+        <button class="choice" type="button" data-value="business">Mi tienda o lugar de trabajo</button>
+        <button class="choice" type="button" data-value="same">Igual que el original</button>
       </div>
       <p class="field-label">¿Cuántas versiones quieres?</p>
       <div class="choices two" id="version-choices">
@@ -165,14 +201,16 @@
 
 <script>
 const API_BASE = "https://jr360iaagency-n8n.rjyuex.easypanel.host/webhook/v1";
+const EJEMPLO = null;
 const el = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+const highlightBrackets = value => esc(value).replace(/\[[^\]]+\]/g, match => `<mark>${match}</mark>`);
 const screens = ["screen-entry","screen-wait","screen-error","screen-result","screen-scripts"];
 let originalInput = null;
 let lastAnalysis = null;
 let versions = [];
 let previousScreen = "screen-entry";
-const choices = {format:"face",setting:"same",versions:3};
+const choices = {format:"face",setting:"home",versions:3};
 
 function showScreen(id){
   screens.forEach(screen => el(screen).classList.toggle("hidden",screen !== id));
@@ -272,6 +310,33 @@ function listHtml(items,emptyText){
   return safeItems.length ? `<ul>${safeItems.map(item => `<li>${esc(item)}</li>`).join("")}</ul>` : `<p>${esc(emptyText)}</p>`;
 }
 
+const SIGNAL_LABELS = {
+  hook:"Gancho del primer segundo",
+  product_proof:"Se ve el producto y su resultado",
+  pacing:"Ritmo: no aburre",
+  shareability:"Se comparte o se guarda",
+  sales_cta:"Dice cómo comprar"
+};
+
+function signalsHtml(signals){
+  if(!signals || typeof signals !== "object") return "";
+  const rows = Object.entries(SIGNAL_LABELS);
+  return `<section class="scorecard" aria-labelledby="scorecard-title">
+    <h3 id="scorecard-title">Boleta del video</h3>
+    ${rows.map(([key,label]) => {
+      const signal = signals[key] && typeof signals[key] === "object" ? signals[key] : {};
+      const rawScore = Number(signal.score);
+      const score = Number.isFinite(rawScore) ? Math.max(0,Math.min(10,rawScore)) : 0;
+      const color = score >= 7 ? "green" : score >= 4 ? "amber" : "red";
+      return `<div class="signal">
+        <div class="signal-head"><span>${esc(label)}</span><span class="signal-score">${esc(score)}/10</span></div>
+        <div class="score-track" role="meter" aria-label="${esc(label)}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${esc(score)}"><span class="score-fill ${color}" style="width:${score*10}%"></span></div>
+        <p class="signal-fix"><strong>Qué cambiar:</strong> ${esc(signal.fix || "No indicado")}</p>
+      </div>`;
+    }).join("")}
+  </section>`;
+}
+
 function paintResult(result){
   const analysis = result.analysis || {};
   const traffic = ["viral","potential","low"].includes(analysis.traffic_light) ? analysis.traffic_light : "potential";
@@ -285,6 +350,7 @@ function paintResult(result){
   el("diagnosis").innerHTML = `
     <div class="verdict"><span class="light ${color}" aria-hidden="true"></span><div class="verdict-text">${esc(heading)}</div></div>
     <p class="criterion">${esc(explanation)}</p>
+    ${signalsHtml(result.dna?.signals)}
     <div class="columns">
       <div class="fact"><h3>Qué lo hizo funcionar</h3>${listHtml(analysis.reasons,"No encontramos fortalezas claras.")}</div>
       <div class="fact"><h3>Qué le faltó</h3>${listHtml(analysis.gaps,"No encontramos faltantes importantes.")}</div>
@@ -326,21 +392,24 @@ function mergedScenes(version){
 function scenesHtml(version){
   return mergedScenes(version).map(scene => `
     <div class="scene"><div class="time">${esc(scene.start)}s – ${esc(scene.end)}s</div><dl>
-      <dt>Qué dices</dt><dd>${esc(scene.voice || "(sin voz, solo texto)")}</dd>
-      <dt>Qué haces</dt><dd>${esc(scene.action || "No indicado")}</dd>
-      <dt>Qué aparece en pantalla</dt><dd>${esc(scene.on_screen || "Sin texto")}</dd>
-      <dt>Dónde colocas el teléfono</dt><dd>${esc([scene.shot,scene.location].filter(Boolean).join(" · ") || "No indicado")}</dd>
+      <dt>Qué dices</dt><dd>${highlightBrackets(scene.voice || "(sin voz, solo texto)")}</dd>
+      <dt>Qué haces</dt><dd>${highlightBrackets(scene.action || "No indicado")}</dd>
+      <dt>Qué aparece en pantalla</dt><dd>${highlightBrackets(scene.on_screen || "Sin texto")}</dd>
+      <dt>Dónde colocas el teléfono</dt><dd>${highlightBrackets([scene.shot,scene.location].filter(Boolean).join(" · ") || "No indicado")}</dd>
     </dl></div>`).join("");
 }
 
 function paintScripts(items){
   versions = items;
-  el("screen-scripts").innerHTML = `<h2>Tus guiones, listos para grabar</h2>${items.map((version,index) => `
+  el("screen-scripts").innerHTML = `<h2>Tus guiones, para grabar hoy</h2>
+    <p class="script-note">Completa lo que está entre corchetes con tus datos reales.</p>${items.map((version,index) => `
     <article class="script-card">
-      <span class="angle">Versión ${index+1}: ${esc(version.angle || "Nuevo ángulo")}</span>
-      <p class="hook">${esc(version.hook || "")}</p>
+      <div class="tags"><span class="tag">Técnica: ${highlightBrackets(version.technique || "No indicada")}</span><span class="tag">Gancho: ${highlightBrackets(version.hook_type || "No indicado")}</span></div>
+      <span class="angle">Versión ${index+1}: ${highlightBrackets(version.angle || "Nuevo ángulo")}</span>
+      <p class="hook">${highlightBrackets(version.hook || "")}</p>
+      <div class="why"><strong>Por qué funciona</strong><p>${highlightBrackets(version.why_it_works || "No indicado")}</p><p><strong>Se lo mandarían a:</strong> ${highlightBrackets(version.share_trigger || "No indicado")}</p><p><strong>Lo guardarían porque:</strong> ${highlightBrackets(version.save_trigger || "No indicado")}</p></div>
       ${scenesHtml(version)}
-      <div class="caption"><strong>Texto para publicar</strong>${esc(version.caption || "")}</div>
+      <div class="caption"><strong>Texto para publicar</strong>${highlightBrackets(version.caption || "")}</div>
       <div class="actions">
         <button class="action main" type="button" data-action="read" data-index="${index}">Usar este guion</button>
         <button class="action" type="button" data-action="listen" data-index="${index}">Escucharlo</button>
@@ -357,7 +426,7 @@ function plainScript(version){
 
 function openReader(version){
   const rows = mergedScenes(version);
-  el("reader-content").innerHTML = `<h2 id="reader-title">${esc(version.hook || "Tu guion")}</h2>${rows.map(scene => `<div class="reader-block"><small>${esc(scene.start)}s – ${esc(scene.end)}s</small>${esc(scene.voice || scene.on_screen || "(sin voz, solo texto)")}</div>`).join("")}`;
+  el("reader-content").innerHTML = `<h2 id="reader-title">${highlightBrackets(version.hook || "Tu guion")}</h2>${rows.map(scene => `<div class="reader-block"><small>${esc(scene.start)}s – ${esc(scene.end)}s</small>${highlightBrackets(scene.voice || scene.on_screen || "(sin voz, solo texto)")}</div>`).join("")}`;
   el("reader").classList.remove("hidden");
   document.body.style.overflow = "hidden";
   el("reader-back").focus();
@@ -366,6 +435,19 @@ function openReader(version){
 function closeReader(){el("reader").classList.add("hidden");document.body.style.overflow="";}
 
 el("show-upload").addEventListener("click",() => {el("upload-area").classList.remove("hidden");el("video-file").click();});
+if(EJEMPLO) el("example-button").classList.remove("hidden");
+el("example-button").addEventListener("click",() => {
+  if(!EJEMPLO) return;
+  const result = EJEMPLO.result || EJEMPLO;
+  lastAnalysis = {analysis_id:result.job_id || "ejemplo",dna:result.dna,original_verdict:result.analysis};
+  paintResult(result);
+  if(Array.isArray(EJEMPLO.versions || result.versions)){
+    const diagnosisHtml = el("diagnosis").innerHTML.replace('id="scorecard-title"','id="example-scorecard-title"').replace('aria-labelledby="scorecard-title"','aria-labelledby="example-scorecard-title"');
+    paintScripts(EJEMPLO.versions || result.versions);
+    el("screen-scripts").insertAdjacentHTML("afterbegin",`<section><h2>Diagnóstico del ejemplo</h2>${diagnosisHtml}</section>`);
+    showScreen("screen-scripts");
+  } else showScreen("screen-result");
+});
 el("video-file").addEventListener("change",() => {
   const file = el("video-file").files[0];
   if(file){el("video-label").classList.add("selected");el("video-label").childNodes[0].nodeValue = `Video seleccionado: ${file.name} `;}
