@@ -109,16 +109,16 @@
 
   <!-- PASO 1: entrada -->
   <section class="tarjeta" id="paso-entrada">
-    <h1>Pega el link de un Reel</h1>
+    <h1>Pega el link de un video</h1>
     <p class="ayuda">Puede ser uno tuyo o de otra persona. No prometemos que "se vuelva viral" — te mostramos la estructura comprobada que trae, para que la repitas con tu contenido.</p>
 
-    <label for="url-reel">Link de Instagram</label>
-    <input type="url" id="url-reel" placeholder="https://www.instagram.com/reel/...">
+    <label for="url-reel">Link de Instagram, TikTok, YouTube o Facebook</label>
+    <input type="url" id="url-reel" placeholder="https://www.instagram.com/reel/..." inputmode="url">
 
     <div class="o-separador">o si el link no funciona</div>
 
     <label class="subir" id="etiqueta-subida" for="archivo-video">
-      📹 Toca aquí para subir el video
+      📹 Toca aquí para subir el video (hasta 60 MB)
       <input type="file" id="archivo-video" accept="video/mp4,video/quicktime,video/webm">
     </label>
 
@@ -131,7 +131,7 @@
     <label for="tema" style="margin-top:20px">¿De qué trata tu cuenta? (opcional)</label>
     <input type="text" id="tema" placeholder="Ej: vendo seguros, cocina casera, clases de guitarra">
 
-    <button class="principal" id="btn-analizar">Analizar este Reel</button>
+    <button class="principal" id="btn-analizar">Analizar este video</button>
     <p class="ayuda" style="margin-top:14px; font-size:14px">Tu video lo analiza Google Gemini y lo borramos al terminar. Google puede usar el contenido para mejorar sus modelos. Sube solo videos que tengas derecho a usar.</p>
   </section>
 
@@ -240,7 +240,7 @@ async function esperarJob(pollUrl){
 function mensajeError(data){
   const codigo = data.error?.code || data.error_code || "";
   const mapa = {
-    TOO_LARGE: "El video pesa demasiado. Prueba con uno de menos de 150 MB.",
+    TOO_LARGE: "El video pesa demasiado. Prueba con uno de menos de 60 MB.",
     TOO_LONG: "El video dura más de 3 minutos. Usa uno más corto.",
     QUOTA_EXHAUSTED: "Llegamos al límite de análisis de hoy. Intenta mañana.",
     INVALID_MEDIA: "No pudimos leer ese archivo. Prueba con otro video.",
@@ -255,7 +255,7 @@ el("btn-analizar").addEventListener("click", async () => {
   const tema = el("tema").value.trim();
 
   if(!url && !archivoVideo){
-    mostrarError("Pega un link de Instagram o sube tu video.");
+    mostrarError("Pega el link del video o súbelo desde tu teléfono.");
     return;
   }
 

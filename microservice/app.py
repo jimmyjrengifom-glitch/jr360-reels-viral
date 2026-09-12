@@ -5,6 +5,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -20,6 +23,8 @@ MAX_BYTES = 150 * 1024 * 1024
 DOWNLOAD_TIMEOUT_SECONDS = 240
 DOWNLOAD_ROOT = Path("/tmp/reels")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
+# Allowlist también evita SSRF: solo se descargan links de estas redes.
+ALLOWED_DOMAINS = ("instagram.com", "tiktok.com", "youtube.com", "youtu.be", "facebook.com", "fb.watch")
 
 app = FastAPI(title="JR360 Reel Downloader", docs_url=None, redoc_url=None)
 
@@ -40,7 +45,7 @@ def _blocked_code(message: str) -> str:
     return "download_blocked"
 
 
-def _ensure_h264(video: Path) -> Path:
+def _ensure_h264(video: Path, force: bool = False) -> Path:
     # Instagram sirve muchos Reels en VP9 dentro de MP4 y Gemini no los procesa
     # ("The file failed to be processed"). Se normaliza a H.264/AAC 720p.
     codec = subprocess.run(
@@ -48,7 +53,7 @@ def _ensure_h264(video: Path) -> Path:
          "stream=codec_name", "-of", "default=nw=1:nk=1", str(video)],
         capture_output=True, text=True, timeout=30,
     ).stdout.strip()
-    if codec == "h264":
+    if codec == "h264" and not force:
         return video
     out = video.with_name("normalized.mp4")
     subprocess.run(
@@ -109,8 +114,8 @@ async def download(
 
     parsed = urlparse(payload.url)
     host = (parsed.hostname or "").lower()
-    if parsed.scheme not in {"http", "https"} or not (
-        host == "instagram.com" or host.endswith(".instagram.com")
+    if parsed.scheme not in {"http", "https"} or not any(
+        host == d or host.endswith("." + d) for d in ALLOWED_DOMAINS
     ):
         raise HTTPException(status_code=422, detail={"code": "unsupported"})
 
@@ -142,3 +147,127 @@ async def download(
         headers={"X-Metadata-Base64": encoded},
         background=background_tasks,
     )
+
+
+# --- /v1/prepare: descarga (o recibe) el video, lo normaliza y lo sube a Gemini ---
+# n8n corrompe los binarios al subirlos a Gemini ("The file failed to be processed"),
+# así que todo el manejo de bytes vive aquí y n8n solo recibe la referencia del archivo.
+
+GEMINI = "https://generativelanguage.googleapis.com/"
+MAX_UPLOAD_BYTES = 60 * 1024 * 1024  # ponytail: el video subido viaja en base64 por n8n; subir el tope exige subida directa del navegador
+
+
+class PrepareRequest(BaseModel):
+    job_id: str
+    url: str | None = None
+    video_b64: str | None = None
+
+
+class GeminiError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+def _gemini_call(req: urllib.request.Request, timeout: int) -> urllib.request.addinfourl:
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        try:
+            body = json.load(exc)
+            message = body.get("error", {}).get("message", "")
+        except Exception:
+            message = ""
+        raise GeminiError(exc.code, message[:300]) from None  # sin la URL: lleva la llave
+
+
+def _gemini_upload(video: Path, key: str, display_name: str) -> dict:
+    size = video.stat().st_size
+    start = urllib.request.Request(
+        f"{GEMINI}upload/v1beta/files?key={key}", method="POST",
+        data=json.dumps({"file": {"display_name": display_name}}).encode(),
+        headers={"X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start",
+                 "X-Goog-Upload-Header-Content-Length": str(size),
+                 "X-Goog-Upload-Header-Content-Type": "video/mp4",
+                 "Content-Type": "application/json"},
+    )
+    with _gemini_call(start, 60) as r:
+        upload_url = r.headers["X-Goog-Upload-URL"]
+    upload = urllib.request.Request(
+        upload_url, method="POST", data=video.read_bytes(),
+        headers={"X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize",
+                 "Content-Length": str(size)},
+    )
+    with _gemini_call(upload, 300) as r:
+        file = json.load(r)["file"]
+    for _ in range(90):
+        if file.get("state") == "ACTIVE":
+            return file
+        if file.get("state") == "FAILED":
+            raise GeminiError(502, "file_failed: " + json.dumps(file.get("error", {}))[:200])
+        time.sleep(2)
+        with _gemini_call(urllib.request.Request(f"{GEMINI}v1beta/{file['name']}?key={key}"), 30) as r:
+            file = json.load(r)
+    raise GeminiError(504, "file_processing_timeout")
+
+
+def _save_upload(video_b64: str, directory: Path) -> Path:
+    raw = base64.b64decode(video_b64, validate=True)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise OverflowError("upload exceeds size limit")
+    src = directory / "upload.bin"
+    src.write_bytes(raw)
+    return _ensure_h264(src, force=True)  # .mov/HEVC de celular -> MP4 H.264 real
+
+
+@app.post("/v1/prepare")
+async def prepare(
+    payload: PrepareRequest,
+    x_internal_token: Annotated[str | None, Header()] = None,
+    x_gemini_key: Annotated[str | None, Header()] = None,
+):
+    if not INTERNAL_TOKEN or x_internal_token != INTERNAL_TOKEN:
+        raise HTTPException(status_code=401, detail={"code": "unauthorized"})
+    if not x_gemini_key:
+        raise HTTPException(status_code=400, detail={"code": "missing_gemini_key"})
+    if bool(payload.url) == bool(payload.video_b64):
+        raise HTTPException(status_code=422, detail={"code": "unsupported"})
+
+    metadata = {"views": None, "likes": None, "comments": None,
+                "captured_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+    DOWNLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+    directory = Path(tempfile.mkdtemp(prefix="prep-", dir=DOWNLOAD_ROOT))
+    try:
+        try:
+            if payload.url:
+                parsed = urlparse(payload.url)
+                host = (parsed.hostname or "").lower()
+                if parsed.scheme not in {"http", "https"} or not any(
+                    host == d or host.endswith("." + d) for d in ALLOWED_DOMAINS
+                ):
+                    raise HTTPException(status_code=422, detail={"code": "unsupported"})
+                video, metadata = await asyncio.wait_for(
+                    asyncio.to_thread(_download, payload.url, directory),
+                    timeout=DOWNLOAD_TIMEOUT_SECONDS,
+                )
+            else:
+                video = await asyncio.to_thread(_save_upload, payload.video_b64, directory)
+        except HTTPException:
+            raise
+        except asyncio.TimeoutError:
+            raise HTTPException(status_code=504, detail={"code": "timeout"})
+        except OverflowError:
+            raise HTTPException(status_code=413, detail={"code": "too_large"})
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail={"code": _blocked_code(str(exc))})
+
+        try:
+            file = await asyncio.to_thread(_gemini_upload, video, x_gemini_key, payload.job_id)
+        except GeminiError as exc:
+            status = 429 if exc.status == 429 else 502
+            raise HTTPException(status_code=status, detail={"code": "gemini_error", "status": exc.status, "message": str(exc)})
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
+
+    return {"file_name": file["name"], "file_uri": file["uri"],
+            "mime_type": file.get("mimeType", "video/mp4"), "metrics": metadata}
