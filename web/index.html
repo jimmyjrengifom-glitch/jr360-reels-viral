@@ -227,9 +227,15 @@ elegirBoton("grupo-escenario","setting");
 elegirBoton("grupo-versiones","versions");
 
 async function esperarJob(pollUrl){
+  const limite = Date.now() + 6 * 60 * 1000;
   while(true){
     const r = await fetch(API_BASE + pollUrl);
     const data = await r.json();
+    // n8n guarda el estado del análisis recién al terminar: mientras trabaja, la consulta dice "no encontrado".
+    if(data.error?.code === "JOB_NOT_FOUND" && Date.now() < limite){
+      await new Promise(res => setTimeout(res, 5000));
+      continue;
+    }
     if(data.status === "completed") return data;
     if(data.status === "failed" || data.ok === false) throw new Error(mensajeError(data));
     if(data.status === "needs_upload") return data;
