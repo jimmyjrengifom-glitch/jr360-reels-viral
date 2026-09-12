@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +17,7 @@ from pydantic import BaseModel
 
 
 MAX_BYTES = 150 * 1024 * 1024
-DOWNLOAD_TIMEOUT_SECONDS = 120
+DOWNLOAD_TIMEOUT_SECONDS = 240
 DOWNLOAD_ROOT = Path("/tmp/reels")
 INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
 
@@ -39,6 +40,27 @@ def _blocked_code(message: str) -> str:
     return "download_blocked"
 
 
+def _ensure_h264(video: Path) -> Path:
+    # Instagram sirve muchos Reels en VP9 dentro de MP4 y Gemini no los procesa
+    # ("The file failed to be processed"). Se normaliza a H.264/AAC 720p.
+    codec = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=codec_name", "-of", "default=nw=1:nk=1", str(video)],
+        capture_output=True, text=True, timeout=30,
+    ).stdout.strip()
+    if codec == "h264":
+        return video
+    out = video.with_name("normalized.mp4")
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(video), "-c:v", "libx264",
+         "-preset", "ultrafast", "-crf", "28", "-vf", "scale=-2:'min(1280,ih)'",
+         "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(out)],
+        check=True, timeout=200,
+    )
+    video.unlink(missing_ok=True)
+    return out
+
+
 def _download(url: str, directory: Path) -> tuple[Path, dict]:
     output = str(directory / "video.%(ext)s")
     options = {
@@ -58,7 +80,7 @@ def _download(url: str, directory: Path) -> tuple[Path, dict]:
     candidates = sorted(directory.glob("video.*"))
     if not candidates:
         raise RuntimeError("download_blocked: output file missing")
-    video = candidates[0]
+    video = _ensure_h264(candidates[0])
     if video.stat().st_size > MAX_BYTES:
         raise OverflowError("download exceeds size limit")
 
