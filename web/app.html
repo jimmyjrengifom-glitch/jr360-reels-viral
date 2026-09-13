@@ -83,6 +83,33 @@
   .scene dl{margin:0}
   .scene dt{font-weight:900;margin-top:8px}
   .scene dd{margin:1px 0 0;color:#3f3b32;white-space:pre-wrap}
+  .field-hint{font-size:16px;color:var(--muted);margin:8px 0 18px}
+  .viral-badge{display:inline-block;border-radius:999px;padding:9px 16px;font-weight:800;font-size:17px;margin:0 0 16px}
+  .viral-passed{background:#eaf6e0;color:#2e6c09;border:1px solid #bfe3a0}
+  .viral-unverified{background:#fdf3d6;color:#7a5b06;border:1px solid #e9cf7d}
+  .why-worked{margin:24px 0}
+  .why-card{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff;margin-top:14px}
+  .why-card:first-of-type{margin-top:0}
+  .why-card-title{font-weight:900;font-size:21px;margin:0 0 8px}
+  .transcript-block{margin-top:22px}
+  .transcript-lines{margin:14px 0}
+  .transcript-line{margin:0 0 10px;font-size:19px;line-height:1.5}
+  .t-time{font-weight:900;color:#5f5848;font-size:16px;margin-right:8px}
+  .hook-alts{margin:16px 0 0}
+  .hook-alts-title{font-weight:900;margin:0 0 10px}
+  .hook-alt{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
+  .hook-alt p{margin:0;flex:1 1 220px;font-weight:700}
+  .hook-alt button{min-width:120px}
+  .script-table{margin:22px 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}
+  .st-head{display:none}
+  .st-row{padding:18px;border-top:1px solid var(--line)}
+  .st-row:first-child{border-top:0}
+  .st-row.alt{background:#faf6ea}
+  .st-cell+.st-cell{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+  .st-label{font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.4px;color:#6d5108;margin:0 0 4px}
+  .st-time{font-size:16px;font-weight:900;color:#5f5848;margin:0 0 6px}
+  .st-text{font-size:20px;line-height:1.5;margin:0}
+  .st-sub{font-size:17px;color:var(--muted);margin:6px 0 0}
   .adapt{margin-top:34px;padding-top:30px;border-top:3px solid var(--black)}
   .choices{display:grid;gap:10px;margin-bottom:24px}
   .choice{border:2px solid #958d78;background:#fff;color:var(--ink);padding:10px 12px}
@@ -112,6 +139,14 @@
   footer{text-align:center;color:#595447;padding:0 18px 30px;font-size:15px}
   #format-choices{grid-template-columns:repeat(2,minmax(0,1fr))}
   @media (min-width:650px){.columns{grid-template-columns:1fr 1fr}.benefits{grid-template-columns:repeat(3,1fr)}.choices.three{grid-template-columns:repeat(3,1fr)}.choices.two{grid-template-columns:repeat(2,1fr)}#format-choices{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(2,1fr)}.actions .main{grid-column:1/-1}}
+  @media (min-width:700px){
+    .script-table .st-head{display:grid;grid-template-columns:1fr 1fr}
+    .script-table .st-head span{padding:14px 18px;font-weight:900;background:var(--black);color:var(--gold-light);font-size:17px}
+    .script-table .st-row{display:grid;grid-template-columns:1fr 1fr;padding:0}
+    .script-table .st-cell{padding:22px}
+    .script-table .st-cell+.st-cell{margin-top:0;padding-top:22px;border-top:0;border-left:1px solid var(--line)}
+    .script-table .st-text{font-size:22px}
+  }
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.spinner{animation-duration:1.8s}}
 </style>
 </head>
@@ -127,7 +162,8 @@
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Puedes grabar sin mostrar tu cara</span></li>
     </ul>
     <label for="video-url">Link de Instagram, TikTok, YouTube o Facebook</label>
-    <input id="video-url" type="url" inputmode="url" autocomplete="url" placeholder="Pega el link aquí">
+    <input id="video-url" type="url" inputmode="url" autocomplete="url" placeholder="Pega el link aquí" aria-describedby="video-url-hint">
+    <p class="field-hint" id="video-url-hint">Usa un video que ya funcionó: más de 5.000 me gusta o más de 500 comentarios.</p>
     <div id="upload-area" class="hidden">
       <label class="upload-box" id="video-label" for="video-file">Seleccionar video (máximo 40 MB)
         <input id="video-file" type="file" accept="video/mp4,video/quicktime,video/webm">
@@ -214,6 +250,13 @@ const EJEMPLO = {"analysis": {"traffic_light": "potential", "confidence": "low",
 const el = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
 const highlightBrackets = value => esc(value).replace(/\[[^\]]+\]/g, match => `<mark>${match}</mark>`);
+function formatTime(sec){
+  const total = Math.max(0,Math.round(Number(sec) || 0));
+  const m = Math.floor(total/60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+let currentTranscript = [];
 // Red de seguridad: si el modelo cuela jerga de cámara o guiones bajos, se traduce a palabras normales.
 const JERGA = [[/plano cenital|cenital/gi,"desde arriba"],[/primer[oa]? plano|plano detalle|plano cerrado|close-?up/gi,"de cerca"],[/plano medio/gi,"a media distancia"],[/plano general/gi,"de lejos"],[/plano/gi,"toma"]];
 const plain = value => JERGA.reduce((t,[re,rep]) => t.replace(re,rep), String(value ?? "")).replace(/_/g," ");
@@ -352,6 +395,61 @@ function signalsHtml(signals){
   </section>`;
 }
 
+function formatMiles(value){
+  const num = Number(value);
+  if(!Number.isFinite(num)) return null;
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g,".");
+}
+
+function viralCheckHtml(check){
+  if(!check || typeof check !== "object") return "";
+  if(check.status === "passed"){
+    const likes = formatMiles(check.likes);
+    const comments = formatMiles(check.comments);
+    const parts = [likes !== null ? `${likes} me gusta` : null,comments !== null ? `${comments} comentarios` : null].filter(Boolean).join(" · ");
+    return `<div class="viral-badge viral-passed" role="status">Video comprobado${parts ? ": "+esc(parts) : ""}</div>`;
+  }
+  if(check.status === "unverified"){
+    return `<div class="viral-badge viral-unverified" role="status">${esc(check.note || "No pudimos comprobar si este video es viral.")}</div>`;
+  }
+  return "";
+}
+
+function whyWorkedHtml(items){
+  const safe = Array.isArray(items) ? items : [];
+  if(!safe.length) return "";
+  return `<section class="why-worked" aria-labelledby="why-worked-title">
+    <h3 id="why-worked-title">Por qué funcionó este video</h3>
+    ${safe.map(item => `<div class="why-card">
+      <p class="why-card-title">${esc(item.reason || "No indicado")}</p>
+      <p><strong>Lo que se ve:</strong> ${esc(item.evidence || "No indicado")}</p>
+      <p><strong>Cómo lo usas tú:</strong> ${esc(item.how_to_use || "No indicado")}</p>
+    </div>`).join("")}
+  </section>`;
+}
+
+function hookIntentHtml(hook){
+  if(!hook || typeof hook !== "object") return "";
+  const intention = hook.intention;
+  const why = hook.why_it_hooks;
+  if(!intention && !why) return "";
+  return `<div class="why"><strong>El gancho del video</strong>
+    ${intention ? `<p><strong>Intención:</strong> ${esc(intention)}</p>` : ""}
+    ${why ? `<p><strong>Por qué engancha:</strong> ${esc(why)}</p>` : ""}
+  </div>`;
+}
+
+function transcriptHtml(transcript){
+  const safe = Array.isArray(transcript) ? transcript : [];
+  currentTranscript = safe;
+  if(!safe.length) return "";
+  return `<details class="transcript-block">
+    <summary>Transcripción del video</summary>
+    <div class="transcript-lines">${safe.map(line => `<p class="transcript-line"><span class="t-time">${esc(formatTime(line.start))}–${esc(formatTime(line.end))}</span>${esc(line.text || "")}</p>`).join("")}</div>
+    <button class="secondary" type="button" id="copy-transcript">Copiar transcripción</button>
+  </details>`;
+}
+
 function paintResult(result){
   const analysis = result.analysis || {};
   const traffic = ["viral","potential","low"].includes(analysis.traffic_light) ? analysis.traffic_light : "potential";
@@ -364,20 +462,23 @@ function paintResult(result){
     : (analysis.criterion || "Diagnóstico basado en la estructura y las estadísticas disponibles.");
   el("diagnosis").innerHTML = `
     <div class="verdict"><span class="light ${color}" aria-hidden="true"></span><div class="verdict-text">${esc(heading)}</div></div>
+    ${viralCheckHtml(result.source?.viral_check)}
     <p class="criterion">${esc(explanation)}</p>
     ${signalsHtml(result.dna?.signals)}
+    ${whyWorkedHtml(result.dna?.why_it_worked)}
     <div class="columns">
       <div class="fact"><h3>Qué lo hizo funcionar</h3>${listHtml(analysis.reasons,"No encontramos fortalezas claras.")}</div>
       <div class="fact"><h3>Qué le faltó</h3>${listHtml(analysis.gaps,"No encontramos faltantes importantes.")}</div>
-    </div>`;
-  el("dna-scenes").innerHTML = (result.dna?.structure || []).map(scene => `
+    </div>
+    ${transcriptHtml(result.dna?.transcript)}`;
+  el("dna-scenes").innerHTML = hookIntentHtml(result.dna?.hook) + ((result.dna?.structure || []).map(scene => `
     <div class="scene"><div class="time">${esc(scene.start)}s – ${esc(scene.end)}s</div><dl>
       <dt>Cómo se grabó</dt><dd>${esc(plain(scene.shot) || "No indicado")}</dd>
       <dt>Qué se ve</dt><dd>${esc(scene.visual || scene.role || "No indicado")}</dd>
       <dt>Qué se dice</dt><dd>${esc(scene.spoken || "Sin voz")}</dd>
       <dt>Texto en pantalla</dt><dd>${esc(scene.on_screen || "Sin texto")}</dd>
       <dt>Edición</dt><dd>${esc(scene.edit || "No indicada")}</dd>
-    </dl></div>`).join("") || "<p>No recibimos el detalle de las escenas.</p>";
+    </dl></div>`).join("") || "<p>No recibimos el detalle de las escenas.</p>");
 }
 
 function setChoice(groupId,key){
@@ -416,14 +517,29 @@ function mergedScenes(version){
   return rows;
 }
 
-function scenesHtml(version){
-  return mergedScenes(version).map(scene => `
-    <div class="scene"><div class="time">${esc(scene.start)}s – ${esc(scene.end)}s</div><dl>
-      <dt>Qué dices</dt><dd>${highlightBrackets(scene.voice || "(sin voz, solo texto)")}</dd>
-      <dt>Qué haces</dt><dd>${highlightBrackets(scene.action || "No indicado")}</dd>
-      <dt>Qué aparece en pantalla</dt><dd>${highlightBrackets(scene.on_screen || "Sin texto")}</dd>
-      <dt>Dónde colocas el teléfono</dt><dd>${highlightBrackets([plain(scene.shot),scene.location].filter(Boolean).join(" · ") || "No indicado")}</dd>
-    </dl></div>`).join("");
+function scriptTableHtml(version){
+  const rows = mergedScenes(version);
+  if(!rows.length) return "<p>No recibimos el guion detallado.</p>";
+  return `<div class="script-table" role="table" aria-label="Guion, minuto a minuto">
+    <div class="st-head" role="row"><span role="columnheader">Lo que dices</span><span role="columnheader">Lo que haces</span></div>
+    ${rows.map((scene,index) => {
+      const time = `${formatTime(scene.start)}–${formatTime(scene.end)}`;
+      const phone = [plain(scene.shot),scene.location].filter(Boolean).join(" · ");
+      return `<div class="st-row${index % 2 ? " alt" : ""}" role="row">
+        <div class="st-cell st-say" role="cell">
+          <p class="st-time">${esc(time)}</p>
+          <p class="st-label">Dices</p>
+          <p class="st-text">${scene.voice ? highlightBrackets(scene.voice) : "Solo texto en pantalla"}</p>
+        </div>
+        <div class="st-cell st-do" role="cell">
+          <p class="st-label">Haces</p>
+          <p class="st-text">${highlightBrackets(scene.action || "No indicado")}</p>
+          ${scene.on_screen ? `<p class="st-sub">En pantalla: ${highlightBrackets(scene.on_screen)}</p>` : ""}
+          ${phone ? `<p class="st-sub">Celular: ${highlightBrackets(phone)}</p>` : ""}
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
 }
 
 function paintScripts(items){
@@ -434,8 +550,10 @@ function paintScripts(items){
       <div class="tags"><span class="tag">Técnica: ${highlightBrackets(version.technique || "No indicada")}</span><span class="tag">Gancho: ${highlightBrackets(plain(version.hook_type) || "No indicado")}</span></div>
       <span class="angle">Versión ${index+1}: ${highlightBrackets(version.angle || "Nuevo ángulo")}</span>
       <p class="hook">${highlightBrackets(version.hook || "")}</p>
+      ${version.hook_intention ? `<div class="why"><strong>Intención</strong><p>${highlightBrackets(version.hook_intention)}</p></div>` : ""}
+      ${Array.isArray(version.hook_alternatives) && version.hook_alternatives.length ? `<div class="hook-alts"><p class="hook-alts-title">Otros ganchos que puedes probar</p>${version.hook_alternatives.map((alt,altIndex) => `<div class="hook-alt"><p>${highlightBrackets(alt)}</p><button class="action" type="button" data-action="copy-alt" data-index="${index}" data-alt="${altIndex}">Copiar</button></div>`).join("")}</div>` : ""}
       <div class="why"><strong>Por qué funciona</strong><p>${highlightBrackets(version.why_it_works || "No indicado")}</p><p><strong>Se lo mandarían a:</strong> ${highlightBrackets(version.share_trigger || "No indicado")}</p><p><strong>Lo guardarían porque:</strong> ${highlightBrackets(version.save_trigger || "No indicado")}</p></div>
-      ${scenesHtml(version)}
+      ${scriptTableHtml(version)}
       <div class="caption"><strong>Texto para publicar</strong>${highlightBrackets(version.caption || "")}</div>
       <div class="actions">
         <button class="action main" type="button" data-action="read" data-index="${index}">Usar este guion</button>
@@ -520,6 +638,11 @@ el("screen-scripts").addEventListener("click",async event => {
   if(event.target.id === "restart-button"){location.reload();return;}
   const button = event.target.closest("button[data-action]");
   if(!button) return;
+  if(button.dataset.action === "copy-alt"){
+    const alt = versions[Number(button.dataset.index)]?.hook_alternatives?.[Number(button.dataset.alt)] || "";
+    try{await navigator.clipboard.writeText(alt);button.textContent="Copiado";}catch(error){button.textContent="No se pudo copiar";}
+    return;
+  }
   const version = versions[Number(button.dataset.index)];
   const text = plainScript(version);
   if(button.dataset.action === "read") openReader(version);
@@ -543,6 +666,17 @@ el("screen-scripts").addEventListener("click",async event => {
     const trimmed = short.length > 1800 ? short.slice(0,1799).trimEnd()+"…" : short;
     window.open(`https://wa.me/?text=${encodeURIComponent(trimmed)}`,"_blank","noopener,noreferrer");
   }
+});
+el("diagnosis").addEventListener("click",async event => {
+  if(event.target.id !== "copy-transcript") return;
+  const button = event.target;
+  const text = currentTranscript.map(line => line.text || "").filter(Boolean).join("\n");
+  try{
+    await navigator.clipboard.writeText(text);
+    const original = "Copiar transcripción";
+    button.textContent = "¡Copiada!";
+    setTimeout(() => {button.textContent = original;},2000);
+  }catch(error){button.textContent = "No se pudo copiar";}
 });
 el("reader-back").addEventListener("click",closeReader);
 document.addEventListener("keydown",event => {if(event.key === "Escape" && !el("reader").classList.contains("hidden")) closeReader();});
