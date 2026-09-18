@@ -52,6 +52,10 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .wait p{font-weight:800;font-size:22px}
   .wait small{display:block;color:var(--muted);font-size:16px}
+  .notice{border-left:6px solid var(--gold);background:#fff8e8;padding:18px 20px;border-radius:10px;
+    color:#5b4406;font-weight:700;margin:6px 0 14px;line-height:1.5}
+  .notice b{display:block;font-size:18px;margin-bottom:6px}
+  .notice span{display:block;font-weight:600;font-size:16px}
   .error-box{border-left:6px solid var(--red);background:#fff2f0;padding:18px;border-radius:10px;color:#741b15;font-weight:700}
   .verdict{display:flex;gap:16px;align-items:center;margin-bottom:12px}
   .light{width:32px;height:32px;border-radius:50%;flex:0 0 auto}
@@ -164,6 +168,14 @@
     <label for="video-url">Link de Instagram, TikTok, YouTube o Facebook</label>
     <input id="video-url" type="url" inputmode="url" autocomplete="url" placeholder="Pega el link aquí" aria-describedby="video-url-hint">
     <p class="field-hint" id="video-url-hint">Usa un video que ya funcionó: más de 5.000 me gusta o más de 500 comentarios.</p>
+    <div id="upload-notice" class="notice hidden" role="status"></div>
+    <details class="quick-guide hidden" id="upload-help">
+      <summary>¿Cómo descargo el video?</summary>
+      <p><b>Si el video es tuyo:</b> ábrelo en Instagram, toca los tres puntos (···) y elige
+      <i>Descargar</i>. Queda en la galería de tu teléfono y desde ahí lo subes aquí.</p>
+      <p><b>Si el video es de otra persona:</b> Instagram no permite descargarlo. Usa uno tuyo
+      que haya funcionado, o pídele el archivo a quien lo grabó.</p>
+    </details>
     <div id="upload-area" class="hidden">
       <label class="upload-box" id="video-label" for="video-file">Seleccionar video (máximo 40 MB)
         <input id="video-file" type="file" accept="video/mp4,video/quicktime,video/webm">
@@ -348,10 +360,20 @@ async function runAnalysis(insights=null){
     if(!response.ok || started.ok === false || !started.poll_url) throw new Error(humanError(started));
     const result = await esperarJob(started.poll_url);
     if(result.status === "needs_upload"){
+      // Instagram y YouTube bloquean las descargas desde un servidor. No es un error de
+      // la persona: se le pide el archivo y el análisis sigue igual. Antes esto saltaba a
+      // la pantalla roja de error y la caja de subir quedaba escondida detrás.
       showScreen("screen-entry");
+      const aviso = el("upload-notice");
+      aviso.innerHTML = '<b>Instagram no nos deja bajar ese video</b>' +
+        '<span>Protege sus enlaces. Descarga el video en tu teléfono y súbelo aquí abajo: ' +
+        'el análisis es exactamente el mismo.</span>';
+      aviso.classList.remove("hidden");
+      el("upload-help").classList.remove("hidden");
       el("upload-area").classList.remove("hidden");
-      el("video-url").value = originalInput.type === "url" ? originalInput.url : "";
-      showError(result.upload_reason || "No pudimos abrir ese link. Sube el video desde tu teléfono.");
+      el("video-url").value = "";
+      el("video-label").scrollIntoView({behavior:"smooth",block:"center"});
+      el("video-file").focus({preventScroll:true});
       return;
     }
     lastAnalysis = {analysis_id:result.job_id,dna:result.dna,original_verdict:result.analysis};
@@ -598,6 +620,8 @@ el("video-file").addEventListener("change",() => {
   if(file){el("video-label").classList.add("selected");el("video-label").childNodes[0].nodeValue = `Video seleccionado: ${file.name} `;}
 });
 el("analyze-button").addEventListener("click",() => {
+  el("upload-notice").classList.add("hidden");
+  el("upload-help").classList.add("hidden");
   const url = el("video-url").value.trim();
   const file = el("video-file").files[0];
   if(!url && !file){showError("Pega el link del video o súbelo desde tu teléfono.");return;}
