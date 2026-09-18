@@ -3,9 +3,18 @@
 3. Nombre: `reel-downloader`; puerto interno: `8080`; 1 CPU y 512 MB RAM.
 4. No agregues dominio público al microservicio.
 5. Environment → agrega `INTERNAL_TOKEN` con un secreto largo y guarda.
+5b. Environment → agrega **`APIFY_TOKEN`** (el de tu cuenta de Apify). Sin esa
+   variable el microservicio sigue funcionando: baja con yt-dlp como antes, que es
+   justo lo que Instagram y YouTube bloquean desde el servidor. Con ella, los links
+   de Instagram se piden a Apify (`apify~instagram-reel-scraper`), que devuelve
+   `videoUrl` y las métricas reales, y el MP4 se baja del CDN desde aquí.
+   Costo verificado el 18/09/2026: **$0,0026 por reel + $0,001 por ejecución**.
+   No se activa `includeDownloadedVideo`: ese cobra **$0,02 por MB** (≈ $0,30 por
+   reel) y por eso bajamos el archivo nosotros.
+   Para cambiar de actor sin tocar el código: `APIFY_ACTOR`.
 6. Deploy → espera estado **Healthy**; prueba `http://reel-downloader:8080/health` desde la red interna.
 7. Abre el servicio n8n → Environment.
-8. Agrega `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-2.5-flash`, `DOWNLOADER_URL=http://reel-downloader:8080` y `DOWNLOADER_TOKEN` con el mismo secreto.
+8. Agrega `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.6-flash`, `DOWNLOADER_URL=http://reel-downloader:8080` y `DOWNLOADER_TOKEN` con el mismo secreto.
 9. Define `N8N_PAYLOAD_SIZE_MAX=150` y reinicia n8n.
 10. n8n → Workflows → menú **…** → **Import from File**.
 11. Importa `n8n/workflow_analizar.json`.

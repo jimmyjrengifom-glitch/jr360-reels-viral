@@ -27,6 +27,17 @@ INTERNAL_TOKEN = os.environ.get("INTERNAL_TOKEN", "")
 # Allowlist también evita SSRF: solo se descargan links de estas redes.
 ALLOWED_DOMAINS = ("instagram.com", "tiktok.com", "youtube.com", "youtu.be", "facebook.com", "fb.watch")
 
+# Instagram y YouTube bloquean a yt-dlp cuando la petición sale de un centro de datos
+# (comprobado el 16/09/2026: el mismo link baja desde una casa y falla desde el VPS).
+# Apify lo pide desde IP residenciales y devuelve el enlace directo al MP4.
+APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
+APIFY_ACTOR = os.environ.get("APIFY_ACTOR", "apify~instagram-reel-scraper")
+APIFY_TIMEOUT_SECONDS = 150
+# ponytail: bajamos el MP4 del CDN nosotros ($0). Dejar que Apify lo descargue cuesta
+# $0,02 por MB, o sea ~$0,30 por reel: sale más caro que el análisis entero.
+CDN_USER_AGENT = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+                  "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148")
+
 app = FastAPI(title="JR360 Reel Downloader", docs_url=None, redoc_url=None)
 
 
@@ -137,6 +148,75 @@ def _ensure_h264(video: Path, force: bool = False) -> Path:
     )
     video.unlink(missing_ok=True)
     return out
+
+
+def _apify_reel(url: str) -> dict:
+    """Pide a Apify los datos del reel. Devuelve el item tal cual o {} si no sirve."""
+    peticion = urllib.request.Request(
+        f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
+        f"?token={APIFY_TOKEN}&timeout={APIFY_TIMEOUT_SECONDS}",
+        data=json.dumps({"username": [url], "resultsLimit": 1}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(peticion, timeout=APIFY_TIMEOUT_SECONDS) as respuesta:
+        items = json.load(respuesta)
+    return items[0] if isinstance(items, list) and items and isinstance(items[0], dict) else {}
+
+
+def _descargar_archivo(url: str, destino: Path) -> None:
+    """Baja el MP4 del CDN en trozos, cortando si se pasa del tope."""
+    peticion = urllib.request.Request(url, headers={"User-Agent": CDN_USER_AGENT})
+    with urllib.request.urlopen(peticion, timeout=DOWNLOAD_TIMEOUT_SECONDS) as respuesta:
+        escrito = 0
+        with destino.open("wb") as archivo:
+            while trozo := respuesta.read(256 * 1024):
+                escrito += len(trozo)
+                if escrito > MAX_BYTES:
+                    raise OverflowError("download exceeds size limit")
+                archivo.write(trozo)
+    if escrito == 0:
+        raise RuntimeError("download_blocked: empty file from cdn")
+
+
+def _metadatos_apify(item: dict) -> dict:
+    numero = lambda v: v if isinstance(v, (int, float)) else None
+    return {
+        "views": numero(item.get("videoPlayCount")) or numero(item.get("videoViewCount")),
+        "likes": numero(item.get("likesCount")),
+        "comments": numero(item.get("commentsCount")),
+        "caption": (item.get("caption") or None),
+        "source": "apify",
+        "captured_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+
+
+def _download_apify(url: str, directory: Path) -> tuple[Path, dict]:
+    item = _apify_reel(url)
+    enlace = item.get("videoUrl")
+    if not enlace:
+        raise RuntimeError("download_blocked: apify sin videoUrl")
+    destino = directory / "video.mp4"
+    _descargar_archivo(enlace, destino)
+    video = _ensure_h264(destino)
+    if video.stat().st_size > MAX_BYTES:
+        raise OverflowError("download exceeds size limit")
+    return video, _metadatos_apify(item)
+
+
+def _obtener_video(url: str, directory: Path) -> tuple[Path, dict]:
+    """Apify primero para Instagram; yt-dlp para el resto y como respaldo."""
+    host = (urlparse(url).hostname or "").lower()
+    if APIFY_TOKEN and (host == "instagram.com" or host.endswith(".instagram.com")):
+        try:
+            return _download_apify(url, directory)
+        except OverflowError:
+            raise
+        except Exception as exc:  # el respaldo es yt-dlp: Apify puede fallar o quedarse corto
+            print(f"apify falló, se intenta yt-dlp: {exc}", flush=True)
+            for resto in directory.glob("video.*"):
+                resto.unlink(missing_ok=True)
+    return _download(url, directory)
 
 
 def _download(url: str, directory: Path) -> tuple[Path, dict]:
@@ -328,8 +408,8 @@ async def prepare(
                 ):
                     raise HTTPException(status_code=422, detail={"code": "unsupported"})
                 video, metadata = await asyncio.wait_for(
-                    asyncio.to_thread(_download, payload.url, directory),
-                    timeout=DOWNLOAD_TIMEOUT_SECONDS,
+                    asyncio.to_thread(_obtener_video, payload.url, directory),
+                    timeout=DOWNLOAD_TIMEOUT_SECONDS + APIFY_TIMEOUT_SECONDS,
                 )
             else:
                 video = await asyncio.to_thread(_save_upload, payload.video_b64, directory)
